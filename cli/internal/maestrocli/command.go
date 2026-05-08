@@ -11,6 +11,10 @@ import (
 
 const DefaultAgent = "claude"
 
+var noopSnapshotHandler SnapshotHandler = func(context.Context, SnapshotConfig) error {
+	return nil
+}
+
 type SnapshotConfig struct {
 	Agent string
 	Path  string
@@ -25,14 +29,12 @@ func NewRootCmd(handler SnapshotHandler) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	cmd.AddCommand(NewSnapshotCmd(handler))
+	cmd.AddCommand(NewSnapshotCmd(normalizeSnapshotHandler(handler)))
 	return cmd
 }
 
 func NewSnapshotCmd(handler SnapshotHandler) *cobra.Command {
-	if handler == nil {
-		handler = func(context.Context, SnapshotConfig) error { return nil }
-	}
+	handler = normalizeSnapshotHandler(handler)
 
 	var agent string
 	var path string
@@ -80,4 +82,12 @@ func resolvePath(path string) (string, error) {
 	}
 
 	return abs, nil
+}
+
+func normalizeSnapshotHandler(handler SnapshotHandler) SnapshotHandler {
+	if handler != nil {
+		return handler
+	}
+
+	return noopSnapshotHandler
 }
