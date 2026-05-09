@@ -61,3 +61,23 @@ func TestSnapshotCommandExplicitFlags(t *testing.T) {
 		t.Fatalf("explicit path = %q, want %q", got.Path, absCwd)
 	}
 }
+
+func TestSnapshotCommandFlagDefaults(t *testing.T) {
+	cmd := maestrocli.NewSnapshotCmd(nil)
+
+	agent, err := cmd.Flags().GetString("agent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if agent != maestrocli.DefaultAgent {
+		t.Fatalf("flag default agent = %q, want %q", agent, maestrocli.DefaultAgent)
+	}
+
+	path, err := cmd.Flags().GetString("path")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != "." {
+		t.Fatalf("flag default path = %q, want %q", path, ".")
+	}
+}

@@ -56,7 +56,7 @@ func NewSnapshotCmd(handler SnapshotHandler) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&agent, "agent", DefaultAgent, "AI provider to use")
-	cmd.Flags().StringVar(&path, "path", "", "Repository root to snapshot")
+	cmd.Flags().StringVar(&path, "path", ".", "Repository root to snapshot")
 
 	return cmd
 }
