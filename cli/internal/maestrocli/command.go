@@ -18,6 +18,10 @@ type SnapshotConfig struct {
 
 type SnapshotHandler func(context.Context, SnapshotConfig) error
 
+var defaultSnapshotHandler SnapshotHandler = func(context.Context, SnapshotConfig) error {
+	return nil
+}
+
 func NewRootCmd(handler SnapshotHandler) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "maestro",
@@ -31,7 +35,7 @@ func NewRootCmd(handler SnapshotHandler) *cobra.Command {
 
 func NewSnapshotCmd(handler SnapshotHandler) *cobra.Command {
 	if handler == nil {
-		handler = func(context.Context, SnapshotConfig) error { return nil }
+		handler = defaultSnapshotHandler
 	}
 
 	var agent string
@@ -42,8 +46,8 @@ func NewSnapshotCmd(handler SnapshotHandler) *cobra.Command {
 		Short:         "Create or update the maestro interface",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			resolvedPath, err := resolvePath(path)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			resolvedPath, err := resolveSnapshotPath(path)
 			if err != nil {
 				return err
 			}
@@ -69,7 +73,7 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) error
 	return cmd.ExecuteContext(ctx)
 }
 
-func resolvePath(path string) (string, error) {
+func resolveSnapshotPath(path string) (string, error) {
 	if path == "" {
 		path = "."
 	}
