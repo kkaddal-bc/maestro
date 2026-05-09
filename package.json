@@ -2,7 +2,8 @@
   "name": "maestro",
   "private": true,
   "scripts": {
-    "typecheck": "cd cli && CGO_ENABLED=0 go test ./...",
-    "test": "cd cli && CGO_ENABLED=0 go test ./..."
+    "go:test": "cd cli && CGO_ENABLED=0 go test ./...",
+    "typecheck": "npm run go:test",
+    "test": "npm run go:test"
   }
 }
