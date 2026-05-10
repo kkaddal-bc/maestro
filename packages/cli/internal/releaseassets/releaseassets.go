@@ -62,61 +62,77 @@ func BuildSkillsArchive(skillsDir string) ([]byte, error) {
 	}
 
 	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
+	if err := writeSkillsArchive(&buf, skillsDir, skills); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func writeSkillsArchive(dst io.Writer, skillsDir string, skills []string) error {
+	gz := gzip.NewWriter(dst)
 	tw := tar.NewWriter(gz)
 
 	for _, skill := range skills {
-		root := filepath.Join(skillsDir, skill)
-		if err := filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-
-			rel, err := filepath.Rel(skillsDir, path)
-			if err != nil {
-				return err
-			}
-			name := filepath.ToSlash(rel)
-			hdr, err := tar.FileInfoHeader(info, "")
-			if err != nil {
-				return err
-			}
-			hdr.Name = name
-			if info.IsDir() && !strings.HasSuffix(hdr.Name, "/") {
-				hdr.Name += "/"
-			}
-			if err := tw.WriteHeader(hdr); err != nil {
-				return err
-			}
-			if info.IsDir() {
-				return nil
-			}
-
-			file, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			_, copyErr := io.Copy(tw, file)
-			closeErr := file.Close()
-			if copyErr != nil {
-				return copyErr
-			}
-			return closeErr
-		}); err != nil {
+		if err := writeSkillArchive(tw, skillsDir, skill); err != nil {
 			_ = tw.Close()
 			_ = gz.Close()
-			return nil, err
+			return err
 		}
 	}
 
 	if err := tw.Close(); err != nil {
 		_ = gz.Close()
-		return nil, err
+		return err
 	}
-	if err := gz.Close(); err != nil {
-		return nil, err
+	return gz.Close()
+}
+
+func writeSkillArchive(tw *tar.Writer, skillsDir, skill string) error {
+	root := filepath.Join(skillsDir, skill)
+	return filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+
+		if err := writeArchiveEntry(tw, skillsDir, path, info); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func writeArchiveEntry(tw *tar.Writer, skillsDir, path string, info os.FileInfo) error {
+	rel, err := filepath.Rel(skillsDir, path)
+	if err != nil {
+		return err
 	}
-	return buf.Bytes(), nil
+
+	headerName := filepath.ToSlash(rel)
+	hdr, err := tar.FileInfoHeader(info, "")
+	if err != nil {
+		return err
+	}
+	hdr.Name = headerName
+	if info.IsDir() && !strings.HasSuffix(hdr.Name, "/") {
+		hdr.Name += "/"
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return nil
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(tw, file); err != nil {
+		return err
+	}
+	return nil
 }
 
 func discoverSkills(skillsDir string) ([]Skill, error) {
@@ -145,12 +161,15 @@ func discoverSkillNames(skillsDir string) ([]string, error) {
 
 	var names []string
 	for _, entry := range entries {
-		if entry.IsDir() {
-			if _, err := os.Stat(filepath.Join(skillsDir, entry.Name(), "SKILL.md")); err == nil {
-				names = append(names, entry.Name())
-			} else if !os.IsNotExist(err) {
-				return nil, err
-			}
+		if !entry.IsDir() {
+			continue
+		}
+
+		skillPath := filepath.Join(skillsDir, entry.Name(), "SKILL.md")
+		if _, err := os.Stat(skillPath); err == nil {
+			names = append(names, entry.Name())
+		} else if !os.IsNotExist(err) {
+			return nil, err
 		}
 	}
 	sort.Strings(names)

@@ -13,11 +13,8 @@ import (
 
 func TestGenerateManifestUsesSkillDirectoriesAndDescriptions(t *testing.T) {
 	skillsDir := t.TempDir()
-	writeSkill(t, skillsDir, "zeta-tool", "Zeta description", map[string]string{
-		"SKILL.md": "first",
-	})
+	writeSkill(t, skillsDir, "zeta-tool", "Zeta description", nil)
 	writeSkill(t, skillsDir, "alpha-tool", "Alpha description", map[string]string{
-		"SKILL.md":          "second",
 		"resources/note.txt": "resource",
 	})
 
@@ -47,13 +44,11 @@ func TestGenerateManifestUsesSkillDirectoriesAndDescriptions(t *testing.T) {
 func TestBuildSkillsArchivePreservesSkillTrees(t *testing.T) {
 	skillsDir := t.TempDir()
 	writeSkill(t, skillsDir, "alpha-tool", "Alpha description", map[string]string{
-		"SKILL.md":          "alpha",
 		"resources/note.txt": "resource",
 	})
 	writeSkill(t, skillsDir, "beta-tool", "Beta description", map[string]string{
-		"SKILL.md":          "beta",
-		"docs/guide.md":     "guide",
-		"docs/extra/readme":  "readme",
+		"docs/guide.md":    "guide",
+		"docs/extra/readme": "readme",
 	})
 
 	archive, err := BuildSkillsArchive(skillsDir)
@@ -103,9 +98,7 @@ func TestBuildSkillsArchivePreservesSkillTrees(t *testing.T) {
 func TestWriteArtifactsWritesManifestAndArchive(t *testing.T) {
 	skillsDir := t.TempDir()
 	outDir := t.TempDir()
-	writeSkill(t, skillsDir, "alpha-tool", "Alpha description", map[string]string{
-		"SKILL.md": "alpha",
-	})
+	writeSkill(t, skillsDir, "alpha-tool", "Alpha description", nil)
 
 	if err := WriteArtifacts("v9.9.9", skillsDir, outDir); err != nil {
 		t.Fatalf("WriteArtifacts() error = %v", err)
@@ -124,17 +117,24 @@ func TestWriteArtifactsWritesManifestAndArchive(t *testing.T) {
 	}
 }
 
-func writeSkill(t *testing.T, root, name, description string, files map[string]string) {
+func writeSkill(t *testing.T, root, name, description string, extraFiles map[string]string) {
 	t.Helper()
 
 	skillDir := filepath.Join(root, name)
-	for rel, contents := range files {
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(%s): %v", skillDir, err)
+	}
+
+	skillMetadata := "---\nname: " + name + "\ndescription: " + description + "\n---\n"
+	skillMetadataPath := filepath.Join(skillDir, "SKILL.md")
+	if err := os.WriteFile(skillMetadataPath, []byte(skillMetadata), 0o644); err != nil {
+		t.Fatalf("WriteFile(%s): %v", skillMetadataPath, err)
+	}
+
+	for rel, contents := range extraFiles {
 		path := filepath.Join(skillDir, rel)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatalf("MkdirAll(%s): %v", path, err)
-		}
-		if rel == "SKILL.md" {
-			contents = "---\nname: " + name + "\ndescription: " + description + "\n---\n"
 		}
 		if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
 			t.Fatalf("WriteFile(%s): %v", path, err)
