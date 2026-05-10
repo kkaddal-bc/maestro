@@ -22,9 +22,6 @@ func TestListCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(home, ".maestro", "skills", "maestro-snap"), 0o755); err != nil {
 		t.Fatalf("mkdir maestro skill: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Join(home, ".claude", "skills", "other-skill"), 0o755); err != nil {
-		t.Fatalf("mkdir claude skill: %v", err)
-	}
 
 	oldFetcher := newSkillsFetcher
 	oldTargets := detectInstallTargets
