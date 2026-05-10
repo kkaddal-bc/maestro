@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -25,6 +26,9 @@ func (f fakeSkillsFetcher) FetchManifest() (*manifest.Manifest, error) {
 }
 
 func (f fakeSkillsFetcher) FetchSkillsArchive(version string) (io.ReadCloser, error) {
+	if f.archive == nil {
+		return nil, errors.New("archive not configured")
+	}
 	return io.NopCloser(bytes.NewReader(f.archive)), nil
 }
 
@@ -78,7 +82,7 @@ func TestInstallCommandInstallsSelectedSkillAndPrintsSummary(t *testing.T) {
 	var stdout bytes.Buffer
 	cmd.SetOut(&stdout)
 	cmd.SetErr(io.Discard)
-	cmd.SetArgs([]string{"maestro-snap"})
+	cmd.SetArgs([]string{"--skill", "maestro-snap"})
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -100,7 +104,7 @@ func TestInstallCommandInstallsSelectedSkillAndPrintsSummary(t *testing.T) {
 	}
 }
 
-func TestInstallCommandInstallsAllSkillsByDefault(t *testing.T) {
+func TestInstallSkillsCommandInstallsAllSkillsWhenNonInteractive(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
@@ -135,12 +139,24 @@ func TestInstallCommandInstallsAllSkillsByDefault(t *testing.T) {
 		if _, err := io.ReadAll(archive); err != nil {
 			t.Fatalf("ReadAll archive: %v", err)
 		}
-		return installer.Result{}, nil
+
+		result := installer.Result{}
+		for _, target := range installTargets {
+			for _, skill := range skillNames {
+				result.Installed = append(result.Installed, installer.Installation{
+					Skill:  skill,
+					Target: target.Path,
+				})
+			}
+		}
+		return result, nil
 	}
 
 	cmd := newInstallCommand()
-	cmd.SetOut(io.Discard)
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
 	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{})
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -149,9 +165,142 @@ func TestInstallCommandInstallsAllSkillsByDefault(t *testing.T) {
 	if len(gotSkills) != 2 || gotSkills[0] != "maestro-snap" || gotSkills[1] != "other-skill" {
 		t.Fatalf("selected skills = %#v", gotSkills)
 	}
+
+
+	out := stdout.String()
+	for _, want := range []string{
+		"✓ installed maestro-snap → ~/.maestro/skills/",
+		"✓ installed other-skill → ~/.maestro/skills/",
+		"✓ installed maestro-snap → ~/.claude/skills/",
+		"✓ installed other-skill → ~/.claude/skills/",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("output missing %q:\n%s", want, out)
+		}
+	}
 }
 
-func TestInstallCommandRejectsUnknownSkill(t *testing.T) {
+func TestInstallSkillsCommandSkipsAlreadyInstalledSkill(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+		t.Fatalf("mkdir .claude: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(home, ".maestro", "skills", "maestro-snap"), 0o755); err != nil {
+		t.Fatalf("mkdir existing skill: %v", err)
+	}
+
+	oldFetcher := newSkillsFetcher
+	oldTargets := detectInstallTargets
+	oldInstaller := runInstaller
+	t.Cleanup(func() {
+		newSkillsFetcher = oldFetcher
+		detectInstallTargets = oldTargets
+		runInstaller = oldInstaller
+	})
+
+	newSkillsFetcher = func() skillsFetcher {
+		return fakeSkillsFetcher{
+			manifest: &manifest.Manifest{
+				Version: "v1.2.3",
+				Skills: []manifest.SkillEntry{
+					{Name: "maestro-snap", Description: "Capture"},
+				},
+			},
+			archive: gzipArchive(t),
+		}
+	}
+
+	runInstaller = func(skillNames []string, archive io.Reader, installTargets []targets.Target) (installer.Result, error) {
+		t.Fatalf("runInstaller called unexpectedly with %#v", skillNames)
+		return installer.Result{}, nil
+	}
+
+	cmd := newInstallCommand()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--skill", "maestro-snap"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if got := stdout.String(); !strings.Contains(got, "skipped maestro-snap (already installed)") {
+		t.Fatalf("output missing skip notice:\n%s", got)
+	}
+}
+
+func TestInstallSkillsCommandUsesPickerWhenInteractive(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+		t.Fatalf("mkdir .claude: %v", err)
+	}
+
+	oldFetcher := newSkillsFetcher
+	oldTargets := detectInstallTargets
+	oldInstaller := runInstaller
+	oldTerminal := isTerminal
+	oldPicker := newInstallPicker
+	t.Cleanup(func() {
+		newSkillsFetcher = oldFetcher
+		detectInstallTargets = oldTargets
+		runInstaller = oldInstaller
+		isTerminal = oldTerminal
+		newInstallPicker = oldPicker
+	})
+
+	newSkillsFetcher = func() skillsFetcher {
+		return fakeSkillsFetcher{
+			manifest: &manifest.Manifest{
+				Version: "v1.2.3",
+				Skills: []manifest.SkillEntry{
+					{Name: "maestro-snap", Description: "Capture"},
+					{Name: "other-skill", Description: "Other"},
+				},
+			},
+			archive: gzipArchive(t),
+		}
+	}
+	isTerminal = func(io.Reader) bool { return true }
+	newInstallPicker = func(in io.Reader, out io.Writer) skillPicker {
+		return fakeInstallPicker{selected: []string{"other-skill"}}
+	}
+
+	var gotSkills []string
+	runInstaller = func(skillNames []string, archive io.Reader, installTargets []targets.Target) (installer.Result, error) {
+		gotSkills = append([]string(nil), skillNames...)
+		if _, err := io.ReadAll(archive); err != nil {
+			t.Fatalf("ReadAll archive: %v", err)
+		}
+
+		result := installer.Result{}
+		for _, target := range installTargets {
+			result.Installed = append(result.Installed, installer.Installation{
+				Skill:  skillNames[0],
+				Target: target.Path,
+			})
+		}
+		return result, nil
+	}
+
+	cmd := newInstallCommand()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if len(gotSkills) != 1 || gotSkills[0] != "other-skill" {
+		t.Fatalf("selected skills = %#v", gotSkills)
+	}
+}
+
+func TestInstallSkillsCommandRejectsUnknownSkill(t *testing.T) {
 	oldFetcher := newSkillsFetcher
 	t.Cleanup(func() {
 		newSkillsFetcher = oldFetcher
@@ -167,13 +316,21 @@ func TestInstallCommandRejectsUnknownSkill(t *testing.T) {
 	}
 
 	cmd := newInstallCommand()
-	cmd.SetArgs([]string{"unknown"})
+	cmd.SetArgs([]string{"--skill", "unknown"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
 
 	if err := cmd.Execute(); err == nil {
 		t.Fatal("Execute() error = nil, want error")
 	}
+}
+
+type fakeInstallPicker struct {
+	selected []string
+}
+
+func (f fakeInstallPicker) Pick(skills []string) ([]string, error) {
+	return append([]string(nil), f.selected...), nil
 }
 
 func gzipArchive(t *testing.T) []byte {
