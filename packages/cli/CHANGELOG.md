@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/kkaddal-bc/maestro/compare/v0.2.0...v0.2.1) (2026-05-10)
+
+
+### Bug Fixes
+
+* **cli:** mock fetcher in root command test ([66a2c08](https://github.com/kkaddal-bc/maestro/commit/66a2c08da7f513033e0f99872fd67a098095f725))
+* **cli:** stub fetchers in root command test ([55b6370](https://github.com/kkaddal-bc/maestro/commit/55b63707d91462ba608a4707e3bb7c370f56615f))
+
 ## [0.2.0](https://github.com/kkaddal-bc/maestro/compare/v0.1.2...v0.2.0) (2026-05-10)
 
 
