@@ -1,6 +1,6 @@
 # Output Templates
 
-Exact markdown structure for the two generated files. Fill in extracted data; omit entire sections if none exist.
+Exact markdown structure for the two generated files. Fill in extracted data; omit entire sections if none exist, such as no gRPC or no WebSocket support.
 
 Use `🔒 (inferred)` whenever auth cannot be determined with confidence from explicit configuration.
 
@@ -23,7 +23,7 @@ Use `🔒 (inferred)` whenever auth cannot be determined with confidence from ex
 
 ### `{METHOD} {/full/path}` {#{method-full-path}}
 **Source:** `{file}:{line}`
-**Auth:** {public | 🔒 (inferred) | 🔒 JWT | 🔒 API Key | 🔒 OAuth2 | 🔒 Role: X}
+**Auth:** {public | 🔒 JWT | 🔒 OAuth2 | 🔒 API Key | 🔒 Role: X | 🔒 (inferred)}
 **Handler:** `{HandlerName}.{methodName}`
 
 **Request Body** — `{RequestType}` _(omit section if no body)_
@@ -51,9 +51,9 @@ Use `🔒 (inferred)` whenever auth cannot be determined with confidence from ex
 | {field} | {type} | {notes or "—"} |
 
 **Error responses** _(omit if unknown)_
-- `400` — validation error
-- `401` — unauthenticated
-- `403` — forbidden
+- `400` - validation error
+- `401` - unauthenticated
+- `403` - forbidden
 
 ---
 
@@ -65,13 +65,13 @@ Use `🔒 (inferred)` whenever auth cannot be determined with confidence from ex
 
 **Namespace:** `{/namespace or /}`
 **Source:** `{gateway-file}:{line}`
-**Auth:** {public | 🔒 (inferred) | 🔒 JWT on connection}
+**Auth:** {public | 🔒 JWT on connection | 🔒 (inferred)}
 
 ### Incoming: `{event:name}` {#{ws-in-event-name}}
 
 | Field | Type | Required | Validation |
 |-------|------|----------|------------|
-| {field} | {type} | yes/no | {rules} |
+| {field} | {type} | yes/no | {rules or "—"} |
 
 **Emits back:** `{ack-event-name}` _(omit if void)_
 
@@ -101,13 +101,13 @@ Use `🔒 (inferred)` whenever auth cannot be determined with confidence from ex
 **Signature:** `rpc {MethodName} ({RequestMsg}) returns ({stream?} {ResponseMsg})`
 **Streaming:** {unary | server-streaming | client-streaming | bidirectional}
 
-**Request — `{RequestMsg}`**
+**Request - `{RequestMsg}`**
 
 | Field | Type | Field # | Notes |
 |-------|------|---------|-------|
 | {field} | {proto-type} | {N} | {optional / required / repeated} |
 
-**Response — `{ResponseMsg}`**
+**Response - `{ResponseMsg}`**
 
 | Field | Type | Field # | Notes |
 |-------|------|---------|-------|
@@ -133,7 +133,7 @@ Use `🔒 (inferred)` whenever auth cannot be determined with confidence from ex
 ## Entities
 
 ### `{table_name}` {#{entity-table-name}}
-**Entity class:** `{EntityClass}` — `{file}:{line}`
+**Entity class:** `{EntityClass}` - `{file}:{line}`
 
 | Column | Type | Constraints | Default | Notes |
 |--------|------|-------------|---------|-------|
