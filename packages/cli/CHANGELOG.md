@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/kkaddal-bc/maestro/compare/v0.3.0...v0.4.0) (2026-05-10)
+
+
+### Features
+
+* **maestro-snap:** add maestro.json snapshot contract ([05917f3](https://github.com/kkaddal-bc/maestro/commit/05917f3e157f8b853010a51aab01888e3c292809))
+
+
+### Bug Fixes
+
+* **cli:** gh-style success and secondary output ([a3c3279](https://github.com/kkaddal-bc/maestro/commit/a3c3279d806f48ffa048d15d3f37a749090fdedc))
+
 ## [0.3.0](https://github.com/kkaddal-bc/maestro/compare/v0.2.1...v0.3.0) (2026-05-10)
 
 
