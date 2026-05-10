@@ -2,6 +2,7 @@ package installer
 
 import (
 	"archive/tar"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/targets"
 )
+
+var errMismatch = errors.New("mismatch")
 
 type Result struct {
 	Installed []Installation
@@ -246,7 +249,7 @@ func skillTreeMatches(skillRoot string, entries []archiveEntry) (bool, error) {
 			return err
 		}
 		if string(data) != string(entry.data) {
-			return fmt.Errorf("file %s does not match archive", rel)
+			return errMismatch
 		}
 
 		info, err := d.Info()
@@ -254,12 +257,15 @@ func skillTreeMatches(skillRoot string, entries []archiveEntry) (bool, error) {
 			return err
 		}
 		if info.Mode().Perm() != entry.mode.Perm() {
-			return fmt.Errorf("file %s mode does not match archive", rel)
+			return errMismatch
 		}
 		return nil
 	})
 
 	if walkErr != nil {
+		if errors.Is(walkErr, errMismatch) {
+			return false, nil
+		}
 		return false, walkErr
 	}
 
