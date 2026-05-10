@@ -71,6 +71,33 @@ func TestCommandHelpShowsExpectedUsage(t *testing.T) {
 }
 
 func TestCommandsWithoutArgsPrintNotImplemented(t *testing.T) {
+	oldListFetcher := newSkillsFetcher
+	oldUpdateFetcher := newUpdateSkillsFetcher
+	oldTargets := detectInstallTargets
+	t.Cleanup(func() {
+		newSkillsFetcher = oldListFetcher
+		newUpdateSkillsFetcher = oldUpdateFetcher
+		detectInstallTargets = oldTargets
+	})
+
+	newSkillsFetcher = func() skillsFetcher {
+		return fakeSkillsFetcher{
+			manifest: &manifest.Manifest{
+				Version: "v1.2.3",
+				Skills:  []manifest.SkillEntry{},
+			},
+		}
+	}
+	newUpdateSkillsFetcher = func() updateSkillsFetcher {
+		return fakeUpdateSkillsFetcher{
+			manifest: &manifest.Manifest{
+				Version: "v1.2.3",
+				Skills:  []manifest.SkillEntry{},
+			},
+		}
+	}
+	detectInstallTargets = func() []targets.Target { return nil }
+
 	tests := [][]string{
 		{},
 		{"list"},
@@ -82,6 +109,18 @@ func TestCommandsWithoutArgsPrintNotImplemented(t *testing.T) {
 			t.Fatalf("root output still contains not implemented:\n%s", out)
 		}
 	}
+}
+
+type fakeUpdateSkillsFetcher struct {
+	manifest *manifest.Manifest
+}
+
+func (f fakeUpdateSkillsFetcher) FetchManifest() (*manifest.Manifest, error) {
+	return f.manifest, nil
+}
+
+func (f fakeUpdateSkillsFetcher) FetchSkillsArchive(string) (io.ReadCloser, error) {
+	return nil, nil
 }
 
 func TestListCommandPrintsTableWithoutSubcommand(t *testing.T) {
