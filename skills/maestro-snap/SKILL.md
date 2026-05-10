@@ -1,6 +1,6 @@
 ---
 name: maestro-snap
-description: Snapshot a service's technical surface area into living markdown docs. Document HTTP, WebSocket, gRPC, database, and consumed dependency contracts by orienting from the project manifest, then using direct contract artifacts when present. Supports single-service repos and monorepos, writing per-service `.maestro/<service-name>/maestro-interface/` output when needed and a root `AGENTS.md` that points agents at `.maestro/` before they scan code. Use when a user wants living interface docs, API contract snapshots, or runs /maestro-snap.
+description: Snapshot a service's technical surface area into living markdown docs. Document HTTP, WebSocket, gRPC, database, consumed dependency contracts, and a machine-readable `maestro.json` snapshot by orienting from the project manifest, then using direct contract artifacts when present. Supports single-service repos and monorepos, writing per-service `.maestro/<service-name>/maestro-interface/` output when needed and a root `AGENTS.md` that points agents at `.maestro/` before they scan code. Use when a user wants living interface docs, API contract snapshots, or runs /maestro-snap.
 ---
 
 # Maestro Snap
@@ -17,10 +17,12 @@ Invocation:
   - `.maestro/maestro-interface/api-contracts.md` — HTTP, WebSocket, and gRPC contracts
   - `.maestro/maestro-interface/dependencies.md` — consumed gRPC contracts and upstream dependency map
   - `.maestro/maestro-interface/db-schema.md` — database tables, columns, relationships, indexes
+  - `.maestro/maestro-interface/maestro.json` — machine-readable snapshot for registry consumption
 - Monorepos:
   - `.maestro/<service-name>/maestro-interface/api-contracts.md`
   - `.maestro/<service-name>/maestro-interface/dependencies.md`
   - `.maestro/<service-name>/maestro-interface/db-schema.md`
+  - `.maestro/<service-name>/maestro-interface/maestro.json`
 - `AGENTS.md` — single navigation rule: check `.maestro/` first, with a snapped-services list at the root
 
 ## Workflow
@@ -76,6 +78,7 @@ Read every discovered file. Use the detected stack from Step 1 to understand whe
 - Read proto files before writing output so service and message definitions are authoritative.
 - When proto files are present, confirm ownership before writing the gRPC section. Prefer server registration evidence over client-only imports when deciding whether a service is provided or consumed.
 - `dependencies.md` is v1 documentation for consumed gRPC services only. HTTP client calls and other upstream dependency types are future scope and should not be documented yet.
+- `maestro.json` is the machine-readable snapshot for registry consumption.
 - If no direct contract artifact exists, read the code that defines routes, handlers, models, and migrations:
   - Open the server bootstrap, router setup, controllers, handlers, and adjacent tests.
   - Follow imports and registration calls to find the code paths that define routes or RPCs.
@@ -115,9 +118,11 @@ Before scanning the repository for any assigned task, read the files in `.maestr
 - `.maestro/maestro-interface/api-contracts.md` — HTTP endpoints, WebSocket channels, and gRPC methods
 - `.maestro/maestro-interface/dependencies.md` — consumed gRPC services and upstream dependency map
 - `.maestro/maestro-interface/db-schema.md` — database tables, columns, and relationships
+- `.maestro/maestro-interface/maestro.json` — machine-readable snapshot for registry consumption
 - `.maestro/<service-name>/maestro-interface/api-contracts.md` — service-specific path
 - `.maestro/<service-name>/maestro-interface/dependencies.md` — service-specific path
 - `.maestro/<service-name>/maestro-interface/db-schema.md` — service-specific path
+- `.maestro/<service-name>/maestro-interface/maestro.json` — service-specific path
 
 These files map the full surface of the service and include source file references. Use them to orient before exploring the codebase.
 
@@ -130,6 +135,6 @@ Snapped services:
 
 Print a brief summary:
 - Files written and line counts
-- Counts: N HTTP endpoints, N WS events, N gRPC methods, N entities, N documented dependencies
+- Counts: N HTTP endpoints, N WS events, N gRPC methods, N entities, N dependencies in `maestro.json`
 - List any upstream dependencies that were discovered but left out because they are future scope, including the provider or package name when available
 - Any gaps, such as unresolved DTO types or inferred auth markers

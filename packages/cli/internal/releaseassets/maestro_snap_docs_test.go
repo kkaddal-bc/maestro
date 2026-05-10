@@ -8,46 +8,79 @@ import (
 )
 
 func TestMaestroSnapDocsReferenceDependenciesMd(t *testing.T) {
-	root := filepath.Join("..", "..", "..", "..")
-
-	skillDoc := mustReadFile(t, filepath.Join(root, "skills", "maestro-snap", "SKILL.md"))
-	templateDoc := mustReadFile(t, filepath.Join(root, "skills", "maestro-snap", "OUTPUT-TEMPLATES.md"))
-	agentsDoc := mustReadFile(t, filepath.Join(root, "AGENTS.md"))
-
-	checks := []struct {
-		name    string
-		content string
-		want    string
-	}{
+	assertMaestroSnapDocs(t, []docCheck{
 		{
 			name:    "skill outputs",
-			content: skillDoc,
+			path:    filepath.Join("skills", "maestro-snap", "SKILL.md"),
 			want:    ".maestro/maestro-interface/dependencies.md",
 		},
 		{
 			name:    "skill scope",
-			content: skillDoc,
+			path:    filepath.Join("skills", "maestro-snap", "SKILL.md"),
 			want:    "`dependencies.md` is v1 documentation for consumed gRPC services only.",
 		},
 		{
 			name:    "template path",
-			content: templateDoc,
+			path:    filepath.Join("skills", "maestro-snap", "OUTPUT-TEMPLATES.md"),
 			want:    "## `.maestro/maestro-interface/dependencies.md`",
 		},
 		{
 			name:    "template scope",
-			content: templateDoc,
+			path:    filepath.Join("skills", "maestro-snap", "OUTPUT-TEMPLATES.md"),
 			want:    "`dependencies.md` captures consumed gRPC services only in v1.",
 		},
 		{
 			name:    "agents path",
-			content: agentsDoc,
+			path:    "AGENTS.md",
 			want:    ".maestro/maestro-interface/dependencies.md",
 		},
-	}
+	})
+}
+
+func TestMaestroSnapDocsReferenceMaestroJson(t *testing.T) {
+	assertMaestroSnapDocs(t, []docCheck{
+		{
+			name:    "skill outputs",
+			path:    filepath.Join("skills", "maestro-snap", "SKILL.md"),
+			want:    ".maestro/maestro-interface/maestro.json",
+		},
+		{
+			name:    "skill schema",
+			path:    filepath.Join("skills", "maestro-snap", "SKILL.md"),
+			want:    "`maestro.json` is the machine-readable snapshot for registry consumption.",
+		},
+		{
+			name:    "template path",
+			path:    filepath.Join("skills", "maestro-snap", "OUTPUT-TEMPLATES.md"),
+			want:    "## `.maestro/maestro-interface/maestro.json`",
+		},
+		{
+			name:    "template schema",
+			path:    filepath.Join("skills", "maestro-snap", "OUTPUT-TEMPLATES.md"),
+			want:    "\"schema_version\": \"1\"",
+		},
+		{
+			name:    "agents path",
+			path:    "AGENTS.md",
+			want:    ".maestro/maestro-interface/maestro.json",
+		},
+	})
+}
+
+type docCheck struct {
+	name string
+	path string
+	want string
+}
+
+func assertMaestroSnapDocs(t *testing.T, checks []docCheck) {
+	t.Helper()
+
+	root := filepath.Join("..", "..", "..", "..")
 
 	for _, check := range checks {
-		if !strings.Contains(check.content, check.want) {
+		content := mustReadFile(t, filepath.Join(root, check.path))
+		if !strings.Contains(content, check.want) {
 			t.Fatalf("%s missing %q", check.name, check.want)
 		}
 	}
