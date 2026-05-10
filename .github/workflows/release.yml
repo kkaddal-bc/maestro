@@ -1,0 +1,55 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/cli/go.mod
+          cache-dependency-path: packages/cli/go.sum
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build release artifacts
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist/maestro-darwin-arm64 dist/maestro-darwin-amd64 dist/assets
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o dist/maestro-darwin-arm64/maestro .
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o dist/maestro-darwin-amd64/maestro .
+          tar -C dist/maestro-darwin-arm64 -czf dist/maestro-darwin-arm64.tar.gz maestro
+          tar -C dist/maestro-darwin-amd64 -czf dist/maestro-darwin-amd64.tar.gz maestro
+          go run ./release-assets --version "${VERSION}" --skills-dir ../../skills --output-dir dist/assets
+          mv dist/assets/manifest.json dist/
+          mv dist/assets/skills.tar.gz dist/
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            packages/cli/dist/maestro-darwin-arm64.tar.gz
+            packages/cli/dist/maestro-darwin-amd64.tar.gz
+            packages/cli/dist/skills.tar.gz
+            packages/cli/dist/manifest.json
