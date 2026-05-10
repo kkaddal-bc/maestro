@@ -1,10 +1,11 @@
 # Output Templates
 
-Exact markdown structure for the two generated files. Fill in extracted data; omit entire sections if none exist, such as no gRPC or no WebSocket support.
+Exact markdown structure for the generated files. Fill in extracted data; omit entire sections if none exist, such as no gRPC or no WebSocket support.
 
 For single-service repos, write these files under `.maestro/maestro-interface/`. For monorepos, write one set per service under `.maestro/<service-name>/maestro-interface/`.
 
 Use `🔒 (inferred)` whenever auth cannot be determined with confidence from explicit configuration.
+`dependencies.md` captures consumed gRPC services only in v1. HTTP client calls and other upstream dependency types are future scope and should not be documented yet.
 
 ---
 
@@ -118,6 +119,40 @@ Only include provided gRPC services; omit consumed services.
 | {field} | {proto-type} | {N} | |
 
 ---
+```
+
+---
+
+## `.maestro/maestro-interface/dependencies.md`
+
+```markdown
+# Dependency Contracts
+> **Service:** {service-name} | **Generated:** {YYYY-MM-DD} | **Scope:** consumed gRPC services only
+
+## Table of Contents
+- [Consumed gRPC Dependencies](#consumed-grpc-dependencies)
+
+---
+
+## Consumed gRPC Dependencies
+
+| Dependency | Proto | Package | Consumer Files | Methods Called | Provider / Notes |
+|-----------|-------|---------|----------------|----------------|------------------|
+| `{ServiceName}` | `{path/to/file.proto}` | `{proto-package}` | `{file}:{line}, ...` | `{MethodName}, ...` | `{provider or package}` |
+
+### `{ServiceName}` {#consumed-grpc-servicename}
+**Proto:** `{path/to/file.proto}`
+**Package:** `{proto-package}`
+**Provider:** `{provider, upstream service, or external system}`
+**Consumer Files:** `{file}:{line}, {file}:{line}`
+
+**Methods Called**
+
+| Method | Request | Response | Source |
+|--------|---------|----------|--------|
+| `{MethodName}` | `{RequestMsg}` | `{ResponseMsg}` | `{file}:{line}` |
+
+**Notes:** `{optional note or "—"}`
 ```
 
 ---
