@@ -9,11 +9,30 @@ import (
 	"testing"
 )
 
+const (
+	releasePleaseWorkflowPath = ".github/workflows/release-please.yml"
+	releasePleaseConfigPath   = "release-please-config.json"
+	releasePleaseManifestPath = ".release-please-manifest.json"
+
+	releasePleasePackagePath = "packages/cli"
+	releasePleaseVersion     = "0.1.0"
+)
+
+type releasePleaseConfigFile struct {
+	Packages map[string]releasePleasePackageConfig `json:"packages"`
+}
+
+type releasePleasePackageConfig struct {
+	ReleaseType   string `json:"release-type"`
+	PackageName   string `json:"package-name"`
+	ChangelogPath string `json:"changelog-path"`
+}
+
 func TestReleasePleaseWorkflowAndConfigFilesMatchIssue33(t *testing.T) {
 	root := repoRoot(t)
 
-	workflow := mustReadFile(t, filepath.Join(root, ".github", "workflows", "release-please.yml"))
-	for _, want := range []string{
+	workflow := mustReadFile(t, filepath.Join(root, releasePleaseWorkflowPath))
+	assertContainsAll(t, workflow,
 		"name: release-please",
 		"branches:\n      - main",
 		"contents: write",
@@ -21,27 +40,13 @@ func TestReleasePleaseWorkflowAndConfigFilesMatchIssue33(t *testing.T) {
 		"googleapis/release-please-action@v4",
 		"config-file: release-please-config.json",
 		"manifest-file: .release-please-manifest.json",
-	} {
-		if !strings.Contains(workflow, want) {
-			t.Fatalf("workflow missing %q:\n%s", want, workflow)
-		}
-	}
+	)
 
-	config := mustReadFile(t, filepath.Join(root, "release-please-config.json"))
-	var releasePleaseConfig struct {
-		Packages map[string]struct {
-			ReleaseType  string `json:"release-type"`
-			PackageName  string `json:"package-name"`
-			ChangelogPath string `json:"changelog-path"`
-		} `json:"packages"`
-	}
-	if err := json.Unmarshal([]byte(config), &releasePleaseConfig); err != nil {
-		t.Fatalf("unmarshal release-please-config.json: %v", err)
-	}
+	config := mustReadJSON[releasePleaseConfigFile](t, filepath.Join(root, releasePleaseConfigPath))
 
-	pkg, ok := releasePleaseConfig.Packages["packages/cli"]
+	pkg, ok := config.Packages[releasePleasePackagePath]
 	if !ok {
-		t.Fatal("release-please config missing packages/cli entry")
+		t.Fatalf("release-please config missing %s entry", releasePleasePackagePath)
 	}
 	if pkg.ReleaseType != "simple" {
 		t.Fatalf("release type = %q, want simple", pkg.ReleaseType)
@@ -53,13 +58,9 @@ func TestReleasePleaseWorkflowAndConfigFilesMatchIssue33(t *testing.T) {
 		t.Fatalf("changelog path = %q, want CHANGELOG.md", pkg.ChangelogPath)
 	}
 
-	manifest := mustReadFile(t, filepath.Join(root, ".release-please-manifest.json"))
-	var releasePleaseManifest map[string]string
-	if err := json.Unmarshal([]byte(manifest), &releasePleaseManifest); err != nil {
-		t.Fatalf("unmarshal .release-please-manifest.json: %v", err)
-	}
-	if got := releasePleaseManifest["packages/cli"]; got != "0.1.0" {
-		t.Fatalf("manifest version = %q, want 0.1.0", got)
+	manifest := mustReadJSON[map[string]string](t, filepath.Join(root, releasePleaseManifestPath))
+	if got := manifest[releasePleasePackagePath]; got != releasePleaseVersion {
+		t.Fatalf("manifest version = %q, want %s", got, releasePleaseVersion)
 	}
 }
 
@@ -81,4 +82,24 @@ func mustReadFile(t *testing.T, path string) string {
 		t.Fatalf("ReadFile(%s): %v", path, err)
 	}
 	return string(data)
+}
+
+func mustReadJSON[T any](t *testing.T, path string) T {
+	t.Helper()
+
+	var decoded T
+	if err := json.Unmarshal([]byte(mustReadFile(t, path)), &decoded); err != nil {
+		t.Fatalf("unmarshal %s: %v", path, err)
+	}
+	return decoded
+}
+
+func assertContainsAll(t *testing.T, content string, wants ...string) {
+	t.Helper()
+
+	for _, want := range wants {
+		if !strings.Contains(content, want) {
+			t.Fatalf("content missing %q:\n%s", want, content)
+		}
+	}
 }
