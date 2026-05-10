@@ -42,6 +42,13 @@ jobs:
           mv dist/assets/manifest.json dist/
           mv dist/assets/skills.tar.gz dist/
 
+      - name: Compute checksums
+        run: |
+          echo "SHA256_ARM64=$(sha256sum dist/maestro-darwin-arm64.tar.gz | awk '{print $1}')" >> "$GITHUB_ENV"
+          echo "SHA256_AMD64=$(sha256sum dist/maestro-darwin-amd64.tar.gz | awk '{print $1}')" >> "$GITHUB_ENV"
+          VERSION="${{ github.ref_name }}"
+          echo "VERSION_NO_V=${VERSION#v}" >> "$GITHUB_ENV"
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -53,3 +60,52 @@ jobs:
             packages/cli/dist/maestro-darwin-amd64.tar.gz
             packages/cli/dist/skills.tar.gz
             packages/cli/dist/manifest.json
+
+      - name: Update Homebrew tap
+        working-directory: ${{ github.workspace }}
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          if [ -z "${TAP_TOKEN}" ]; then
+            echo "HOMEBREW_TAP_TOKEN secret not set — skipping tap update"
+            exit 0
+          fi
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/kkaddal-bc/homebrew-maestro.git" tap
+          python3 - << 'PYEOF'
+          import re, os
+
+          tag     = os.environ['VERSION']
+          version = os.environ['VERSION_NO_V']
+          arm_sha = os.environ['SHA256_ARM64']
+          amd_sha = os.environ['SHA256_AMD64']
+          base    = f"https://github.com/kkaddal-bc/maestro/releases/download/{tag}"
+
+          with open('tap/Formula/maestro.rb') as f:
+              content = f.read()
+
+          content = re.sub(r'version "[^"]+"', f'version "{version}"', content)
+          content = re.sub(
+              r'https://github\.com/kkaddal-bc/maestro/releases/download/v[^/]+/maestro-darwin-arm64\.tar\.gz',
+              f'{base}/maestro-darwin-arm64.tar.gz', content)
+          content = re.sub(
+              r'https://github\.com/kkaddal-bc/maestro/releases/download/v[^/]+/maestro-darwin-amd64\.tar\.gz',
+              f'{base}/maestro-darwin-amd64.tar.gz', content)
+
+          # Replace sha256 values in order (arm64 first, then amd64)
+          parts = content.split('sha256 "')
+          assert len(parts) == 3, f"Expected 3 sha256 fields, got {len(parts) - 1}"
+          parts[1] = arm_sha + '"' + parts[1].split('"', 1)[1]
+          parts[2] = amd_sha + '"' + parts[2].split('"', 1)[1]
+          content = 'sha256 "'.join(parts)
+
+          with open('tap/Formula/maestro.rb', 'w') as f:
+              f.write(content)
+          PYEOF
+
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/maestro.rb
+          git commit -m "brew: bump maestro to ${VERSION}"
+          git push
