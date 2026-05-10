@@ -2,6 +2,7 @@ package installer
 
 import (
 	"archive/tar"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -232,9 +233,6 @@ func skillTreeMatches(skillRoot string, entries []archiveEntry) (bool, error) {
 			if _, ok := expectedDirs[rel]; ok {
 				return nil
 			}
-			if _, ok := expectedFiles[rel]; ok {
-				return errTreeMismatch
-			}
 			return errTreeMismatch
 		}
 
@@ -248,7 +246,7 @@ func skillTreeMatches(skillRoot string, entries []archiveEntry) (bool, error) {
 		if err != nil {
 			return err
 		}
-		if string(data) != string(entry.data) {
+		if !bytes.Equal(data, entry.data) {
 			return errTreeMismatch
 		}
 
