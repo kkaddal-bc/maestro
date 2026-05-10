@@ -55,13 +55,7 @@ func (s *HuhSelector) Select(skills []string) ([]string, error) {
 	field := huh.NewMultiSelect[string]().
 		Title("Select skills to install").
 		Options(options...).
-		Value(&selected).
-		Validate(func(values []string) error {
-			if len(values) == 0 {
-				return errors.New("select at least one skill")
-			}
-			return nil
-		})
+		Value(&selected)
 
 	form := huh.NewForm(huh.NewGroup(field))
 	if s.in != nil {
@@ -75,11 +69,7 @@ func (s *HuhSelector) Select(skills []string) ([]string, error) {
 		return nil, err
 	}
 
-	if containsValue(selected, installAllOptionValue) {
-		return skills, nil
-	}
-
-	return selected, nil
+	return resolveSelection(selected, skills), nil
 }
 
 func containsValue(values []string, want string) bool {
@@ -89,4 +79,11 @@ func containsValue(values []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func resolveSelection(selected, skills []string) []string {
+	if len(selected) == 0 || containsValue(selected, installAllOptionValue) {
+		return skills
+	}
+	return selected
 }

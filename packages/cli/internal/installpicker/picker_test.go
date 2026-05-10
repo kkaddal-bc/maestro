@@ -29,3 +29,22 @@ func TestPickerDelegatesToSelector(t *testing.T) {
 		t.Fatalf("selector got %#v", selector.got)
 	}
 }
+
+func TestResolveSelectionDefaultsToAllSkillsWhenNothingSelected(t *testing.T) {
+	skills := []string{"maestro-snap", "other-skill"}
+
+	for _, tc := range []struct {
+		name     string
+		selected []string
+	}{
+		{name: "empty submit", selected: []string{}},
+		{name: "install all", selected: []string{installAllOptionValue}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveSelection(tc.selected, skills)
+			if len(got) != 2 || got[0] != "maestro-snap" || got[1] != "other-skill" {
+				t.Fatalf("resolveSelection(%#v, skills) = %#v, want all skills", tc.selected, got)
+			}
+		})
+	}
+}
