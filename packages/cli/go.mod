@@ -2,7 +2,10 @@ module github.com/kkaddal-bc/maestro/packages/cli
 
 go 1.22
 
-require github.com/spf13/cobra v1.8.1
+require (
+	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/spf13/cobra v1.8.1
+)
 
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
