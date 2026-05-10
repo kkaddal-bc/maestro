@@ -15,6 +15,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const updateSkillFlagName = "skill"
+
 type updateSkillsFetcher interface {
 	FetchManifest() (*manifest.Manifest, error)
 	FetchSkillsArchive(version string) (io.ReadCloser, error)
@@ -59,7 +61,7 @@ func runUpdateSkills(cmd *cobra.Command, _ []string) error {
 	}
 
 	activeTargets := detectInstallTargets()
-	selected, err := selectedUpdateSkills(cmd, skillsManifest, activeTargets)
+	selected, err := selectUpdateSkills(cmd, skillsManifest, activeTargets)
 	if err != nil {
 		return err
 	}
@@ -98,8 +100,8 @@ func runUpdateSkills(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func selectedUpdateSkills(cmd *cobra.Command, manifestData *manifest.Manifest, installTargets []targets.Target) ([]string, error) {
-	requested, err := cmd.Flags().GetString("skill")
+func selectUpdateSkills(cmd *cobra.Command, manifestData *manifest.Manifest, installTargets []targets.Target) ([]string, error) {
+	requested, err := cmd.Flags().GetString(updateSkillFlagName)
 	if err != nil {
 		return nil, err
 	}
@@ -162,5 +164,5 @@ func printUpToDateSummary(out io.Writer) {
 }
 
 func addUpdateSkillFlag(cmd *cobra.Command) {
-	cmd.Flags().String("skill", "", "Update a single skill by name")
+	cmd.Flags().String(updateSkillFlagName, "", "Update a single skill by name")
 }

@@ -20,6 +20,18 @@ type countingUpdateFetcher struct {
 	archiveCalls  int
 }
 
+func stubUpdateSkillsFetcher(t *testing.T, fetcher updateSkillsFetcher) {
+	t.Helper()
+
+	oldFetcher := newUpdateSkillsFetcher
+	t.Cleanup(func() {
+		newUpdateSkillsFetcher = oldFetcher
+	})
+	newUpdateSkillsFetcher = func() updateSkillsFetcher {
+		return fetcher
+	}
+}
+
 func (f *countingUpdateFetcher) FetchManifest() (*manifest.Manifest, error) {
 	f.manifestCalls++
 	return f.manifest, nil
@@ -57,13 +69,7 @@ func TestUpdateSkillsCommandUpdatesInstalledSkillsAndFetchesFreshManifestEachRun
 		}),
 	}
 
-	oldFetcher := newUpdateSkillsFetcher
-	t.Cleanup(func() {
-		newUpdateSkillsFetcher = oldFetcher
-	})
-	newUpdateSkillsFetcher = func() updateSkillsFetcher {
-		return fetcher
-	}
+	stubUpdateSkillsFetcher(t, fetcher)
 
 	firstOutput := executeUpdateCommand(t)
 	for _, want := range []string{
@@ -125,13 +131,7 @@ func TestUpdateCommandWithSkillFlagUpdatesOnlyRequestedSkill(t *testing.T) {
 		}),
 	}
 
-	oldFetcher := newUpdateSkillsFetcher
-	t.Cleanup(func() {
-		newUpdateSkillsFetcher = oldFetcher
-	})
-	newUpdateSkillsFetcher = func() updateSkillsFetcher {
-		return fetcher
-	}
+	stubUpdateSkillsFetcher(t, fetcher)
 
 	cmd := newUpdateCommand()
 	var stdout bytes.Buffer
@@ -156,7 +156,6 @@ func TestUpdateCommandRejectsUnknownOrUninstalledSkill(t *testing.T) {
 	tests := []struct {
 		name            string
 		skill           string
-		prepare         func(t *testing.T, home string)
 		wantErrContains string
 	}{
 		{
@@ -175,24 +174,15 @@ func TestUpdateCommandRejectsUnknownOrUninstalledSkill(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			home := t.TempDir()
 			t.Setenv("HOME", home)
-			if tt.prepare != nil {
-				tt.prepare(t, home)
-			}
 
-			oldFetcher := newUpdateSkillsFetcher
-			t.Cleanup(func() {
-				newUpdateSkillsFetcher = oldFetcher
-			})
-			newUpdateSkillsFetcher = func() updateSkillsFetcher {
-				return &countingUpdateFetcher{
-					manifest: &manifest.Manifest{
-						Version: "v1.2.3",
-						Skills: []manifest.SkillEntry{
-							{Name: "maestro-snap", Description: "Capture"},
-						},
+			stubUpdateSkillsFetcher(t, &countingUpdateFetcher{
+				manifest: &manifest.Manifest{
+					Version: "v1.2.3",
+					Skills: []manifest.SkillEntry{
+						{Name: "maestro-snap", Description: "Capture"},
 					},
-				}
-			}
+				},
+			})
 
 			cmd := newUpdateCommand()
 			cmd.SetOut(io.Discard)
