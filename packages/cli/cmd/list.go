@@ -32,9 +32,9 @@ func newListSkillsCommand() *cobra.Command {
 }
 
 func runListSkills(cmd *cobra.Command, _ []string) error {
-	client := newSkillsFetcher()
+	fetcher := newSkillsFetcher()
 
-	manifestData, err := client.FetchManifest()
+	manifestData, err := fetcher.FetchManifest()
 	if err != nil {
 		return err
 	}
@@ -49,16 +49,16 @@ func runListSkills(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func printListSkills(out io.Writer, home string, manifestData *manifest.Manifest, activeTargets []targets.Target) {
+func printListSkills(out io.Writer, home string, manifestData *manifest.Manifest, installTargets []targets.Target) {
 	headers := []string{"SKILL", "DESCRIPTION"}
-	for _, target := range activeTargets {
+	for _, target := range installTargets {
 		headers = append(headers, displayTargetPath(home, target.Path))
 	}
 	fmt.Fprintln(out, strings.Join(headers, "\t"))
 
 	for _, skill := range manifestData.Skills {
 		row := []string{skill.Name, skill.Description}
-		for _, target := range activeTargets {
+		for _, target := range installTargets {
 			row = append(row, skillStatus(target.Path, skill.Name))
 		}
 		fmt.Fprintln(out, strings.Join(row, "\t"))
@@ -67,8 +67,8 @@ func printListSkills(out io.Writer, home string, manifestData *manifest.Manifest
 
 func skillStatus(targetPath, skillName string) string {
 	info, err := os.Stat(filepath.Join(targetPath, skillName))
-	if err == nil && info.IsDir() {
-		return "installed"
+	if err != nil || !info.IsDir() {
+		return "not installed"
 	}
-	return "not installed"
+	return "installed"
 }
