@@ -30,15 +30,7 @@ func (r Renderer) Render(w io.Writer, headers []string, rows []Row) error {
 		return nil
 	}
 
-	normalizedRows := make([]Row, 0, len(rows))
-	for _, row := range rows {
-		normalizedRows = append(normalizedRows, Row{
-			Name:        row.Name,
-			Description: r.truncateDescription(row.Description),
-			Statuses:    append([]string(nil), row.Statuses...),
-		})
-	}
-
+	normalizedRows := r.normalizeRows(rows)
 	widths := columnWidths(headers, normalizedRows)
 	useStyles := isTerminalWriter(w)
 	headerStyle := lipgloss.NewStyle().Bold(true)
@@ -48,24 +40,25 @@ func (r Renderer) Render(w io.Writer, headers []string, rows []Row) error {
 
 	fmt.Fprintln(w, renderRow(headers, widths, headerStyle, nil, useStyles))
 	for _, row := range normalizedRows {
-		cells := make([]string, 0, 2+len(row.Statuses))
-		cells = append(cells, row.Name, row.Description)
-		cells = append(cells, row.Statuses...)
-
-		styles := make([]lipgloss.Style, 0, len(cells))
-		styles = append(styles, lipgloss.NewStyle(), descriptionStyle)
-		for _, status := range row.Statuses {
-			if status == "installed" {
-				styles = append(styles, installedStyle)
-				continue
-			}
-			styles = append(styles, missingStyle)
-		}
-
+		cells := row.cells()
+		styles := row.styles(descriptionStyle, installedStyle, missingStyle)
 		fmt.Fprintln(w, renderRow(cells, widths, lipgloss.Style{}, styles, useStyles))
 	}
 
 	return nil
+}
+
+func (r Renderer) normalizeRows(rows []Row) []Row {
+	normalized := make([]Row, len(rows))
+	for i, row := range rows {
+		normalized[i] = Row{
+			Name:        row.Name,
+			Description: r.truncateDescription(row.Description),
+			Statuses:    append([]string(nil), row.Statuses...),
+		}
+	}
+
+	return normalized
 }
 
 func (r Renderer) truncateDescription(description string) string {
@@ -92,7 +85,7 @@ func columnWidths(headers []string, rows []Row) []int {
 	}
 
 	for _, row := range rows {
-		values := append([]string{row.Name, row.Description}, row.Statuses...)
+		values := row.cells()
 		for i, value := range values {
 			if i >= len(widths) {
 				break
@@ -120,6 +113,31 @@ func renderRow(values []string, widths []int, rowStyle lipgloss.Style, cellStyle
 		return rowStyle.Render(strings.Join(cells, "  "))
 	}
 	return strings.Join(cells, "  ")
+}
+
+func (row Row) cells() []string {
+	values := make([]string, 0, 2+len(row.Statuses))
+	values = append(values, row.Name, row.Description)
+	values = append(values, row.Statuses...)
+	return values
+}
+
+func (row Row) styles(descriptionStyle, installedStyle, missingStyle lipgloss.Style) []lipgloss.Style {
+	styles := make([]lipgloss.Style, 0, 2+len(row.Statuses))
+	styles = append(styles, lipgloss.NewStyle(), descriptionStyle)
+	for _, status := range row.Statuses {
+		styles = append(styles, styleForStatus(status, installedStyle, missingStyle))
+	}
+	return styles
+}
+
+func styleForStatus(status string, installedStyle, missingStyle lipgloss.Style) lipgloss.Style {
+	switch status {
+	case "installed":
+		return installedStyle
+	default:
+		return missingStyle
+	}
 }
 
 func padRight(value string, width int) string {

@@ -56,13 +56,17 @@ func printListSkills(out io.Writer, home string, manifestData *manifest.Manifest
 		headers = append(headers, displayTargetPath(home, target.Path))
 	}
 
-	renderer := listtable.NewRenderer()
+	return listtable.NewRenderer().Render(out, headers, buildListRows(manifestData, installTargets))
+}
+
+func buildListRows(manifestData *manifest.Manifest, installTargets []targets.Target) []listtable.Row {
 	rows := make([]listtable.Row, 0, len(manifestData.Skills))
 	for _, skill := range manifestData.Skills {
 		statuses := make([]string, 0, len(installTargets))
 		for _, target := range installTargets {
 			statuses = append(statuses, skillStatus(target.Path, skill.Name))
 		}
+
 		rows = append(rows, listtable.Row{
 			Name:        skill.Name,
 			Description: skill.Description,
@@ -70,7 +74,7 @@ func printListSkills(out io.Writer, home string, manifestData *manifest.Manifest
 		})
 	}
 
-	return renderer.Render(out, headers, rows)
+	return rows
 }
 
 func skillStatus(targetPath, skillName string) string {
