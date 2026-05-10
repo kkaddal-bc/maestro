@@ -1,6 +1,6 @@
 ---
 name: maestro-snap
-description: Snapshot a service's technical surface area into living markdown docs. Document HTTP, WebSocket, gRPC, and database contracts by orienting from the project manifest, then using direct contract artifacts when present. Supports single-service repos and monorepos, writing per-service `.maestro/<service-name>/maestro-interface/` output when needed, plus a root `AGENTS.md` that points agents at `.maestro/` before they scan code. Use when a user wants living interface docs, API contract snapshots, or runs /maestro-snap.
+description: Snapshot a service's technical surface area into living markdown docs. Document HTTP, WebSocket, gRPC, and database contracts by orienting from the project manifest, then using direct contract artifacts when present. Supports single-service repos and monorepos, writing per-service `.maestro/<service-name>/maestro-interface/` output when needed and a root `AGENTS.md` that points agents at `.maestro/` before they scan code. Use when a user wants living interface docs, API contract snapshots, or runs /maestro-snap.
 ---
 
 # Maestro Snap
@@ -25,7 +25,7 @@ Invocation:
 
 ### Step 1 - Orient
 
-Read the project manifest first to identify the stack and runtime shape. Then determine whether the repo is a single service or a monorepo by checking for multiple first-level service directories that each contain their own manifest. Run in parallel:
+Read the project manifest first to identify the stack and runtime shape. Then determine whether the repo is a single service or a monorepo by checking for top-level service directories that each contain their own manifest. Run in parallel:
 
 ```bash
 # Project manifest
@@ -100,7 +100,7 @@ Rules:
 
 Create `AGENTS.md` at the repository root if it does not already exist. If it already exists, update it in place so the snapped-services list stays current.
 
-The file must be minimal and purely navigational, but it must list all snapped services and their `.maestro/<service-name>/` paths:
+The file must be minimal and purely navigational. Include the applicable path entries below, and add one snapped-services line per service:
 
 ```markdown
 # AGENTS.md
@@ -109,14 +109,14 @@ Before scanning the repository for any assigned task, read the files in `.maestr
 
 - `.maestro/maestro-interface/api-contracts.md` — HTTP endpoints, WebSocket channels, and gRPC methods
 - `.maestro/maestro-interface/db-schema.md` — database tables, columns, and relationships
-- `.maestro/<service-name>/maestro-interface/api-contracts.md` — monorepo service path
-- `.maestro/<service-name>/maestro-interface/db-schema.md` — monorepo service path
+- `.maestro/<service-name>/maestro-interface/api-contracts.md` — service-specific path
+- `.maestro/<service-name>/maestro-interface/db-schema.md` — service-specific path
 
 These files map the full surface of the service and include source file references. Use them to orient before exploring the codebase.
 
 Snapped services:
 
-- `<service-name>` → `.maestro/<service-name>/`
+- `<service-name>` → `.maestro/<service-name>/` _(repeat once per snapped service)_
 ```
 
 ### Step 6 - Report
