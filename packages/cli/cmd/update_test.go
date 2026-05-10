@@ -71,7 +71,7 @@ func TestUpdateCommandUpdatesInstalledSkillsAndFetchesFreshManifestEachRun(t *te
 
 	stubUpdateSkillsFetcher(t, fetcher)
 
-	firstOutput := executeUpdateCommand(t)
+	firstOutput := executeTopLevelUpdateCommand(t)
 	for _, want := range []string{
 		"✓ updated maestro-snap → ~/.maestro/skills/",
 		"✓ updated maestro-snap → ~/.claude/skills/",
@@ -90,7 +90,7 @@ func TestUpdateCommandUpdatesInstalledSkillsAndFetchesFreshManifestEachRun(t *te
 		t.Fatalf("stale file remains unexpectedly: %v", err)
 	}
 
-	secondOutput := executeUpdateCommand(t)
+	secondOutput := executeTopLevelUpdateCommand(t)
 	if !strings.Contains(secondOutput, "skills are already up to date") {
 		t.Fatalf("second output missing up-to-date message:\n%s", secondOutput)
 	}
@@ -134,6 +134,55 @@ func TestUpdateCommandWithSkillFlagUpdatesOnlyRequestedSkill(t *testing.T) {
 	stubUpdateSkillsFetcher(t, fetcher)
 
 	cmd := newUpdateCommand()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--skill", "maestro-snap"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	assertUpdateFileContents(t, filepath.Join(maestroTarget, "maestro-snap", "SKILL.md"), "new snap")
+	assertUpdateFileContents(t, filepath.Join(claudeTarget, "maestro-snap", "SKILL.md"), "new snap")
+	assertUpdateFileContents(t, filepath.Join(maestroTarget, "other-skill", "SKILL.md"), "old other")
+	assertUpdateFileContents(t, filepath.Join(claudeTarget, "other-skill", "SKILL.md"), "old other")
+	if strings.Contains(stdout.String(), "other-skill") {
+		t.Fatalf("output unexpectedly mentions other-skill:\n%s", stdout.String())
+	}
+}
+
+func TestUpdateSkillsAliasWithSkillFlagUpdatesOnlyRequestedSkill(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+		t.Fatalf("mkdir .claude: %v", err)
+	}
+
+	maestroTarget := filepath.Join(home, ".maestro", "skills")
+	claudeTarget := filepath.Join(home, ".claude", "skills")
+	mustWriteUpdateFile(t, filepath.Join(maestroTarget, "maestro-snap", "SKILL.md"), "old snap")
+	mustWriteUpdateFile(t, filepath.Join(maestroTarget, "other-skill", "SKILL.md"), "old other")
+	mustWriteUpdateFile(t, filepath.Join(claudeTarget, "maestro-snap", "SKILL.md"), "old snap")
+	mustWriteUpdateFile(t, filepath.Join(claudeTarget, "other-skill", "SKILL.md"), "old other")
+
+	fetcher := &countingUpdateFetcher{
+		manifest: &manifest.Manifest{
+			Version: "v1.2.3",
+			Skills: []manifest.SkillEntry{
+				{Name: "maestro-snap", Description: "Capture"},
+				{Name: "other-skill", Description: "Other"},
+			},
+		},
+		archive: gzipUpdateArchive(t, map[string]string{
+			"maestro-snap/SKILL.md": "new snap",
+			"other-skill/SKILL.md":  "new other",
+		}),
+	}
+
+	stubUpdateSkillsFetcher(t, fetcher)
+
+	cmd := newUpdateSkillsCommand()
 	var stdout bytes.Buffer
 	cmd.SetOut(&stdout)
 	cmd.SetErr(io.Discard)
@@ -200,7 +249,7 @@ func TestUpdateCommandRejectsUnknownOrUninstalledSkill(t *testing.T) {
 	}
 }
 
-func executeUpdateCommand(t *testing.T) string {
+func executeTopLevelUpdateCommand(t *testing.T) string {
 	t.Helper()
 
 	cmd := newUpdateCommand()
