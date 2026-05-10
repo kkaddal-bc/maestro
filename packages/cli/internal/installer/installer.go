@@ -203,29 +203,7 @@ func writeSkill(targetRoot, skill string, entries []archiveEntry) error {
 }
 
 func skillTreeMatches(skillRoot string, entries []archiveEntry) (bool, error) {
-	expectedFiles := map[string]archiveEntry{}
-	expectedDirs := map[string]struct{}{
-		".": {},
-	}
-
-	for _, entry := range entries {
-		cleanRel := filepath.Clean(filepath.FromSlash(entry.relPath))
-		if entry.relPath == "" || cleanRel == "." {
-			continue
-		}
-
-		parts := strings.Split(filepath.ToSlash(cleanRel), "/")
-		if len(parts) > 1 {
-			for i := 1; i < len(parts); i++ {
-				expectedDirs[filepath.Join(parts[:i]...)] = struct{}{}
-			}
-		}
-		if entry.isDir {
-			expectedDirs[cleanRel] = struct{}{}
-			continue
-		}
-		expectedFiles[cleanRel] = entry
-	}
+	expectedFiles, expectedDirs := expectedArchiveTree(entries)
 
 	seenFiles := map[string]struct{}{}
 	seenDirs := map[string]struct{}{
@@ -303,6 +281,35 @@ func skillTreeMatches(skillRoot string, entries []archiveEntry) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func expectedArchiveTree(entries []archiveEntry) (map[string]archiveEntry, map[string]struct{}) {
+	expectedFiles := map[string]archiveEntry{}
+	expectedDirs := map[string]struct{}{
+		".": {},
+	}
+
+	for _, entry := range entries {
+		cleanRel := filepath.Clean(filepath.FromSlash(entry.relPath))
+		if entry.relPath == "" || cleanRel == "." {
+			continue
+		}
+
+		addExpectedParentDirs(cleanRel, expectedDirs)
+		if entry.isDir {
+			expectedDirs[cleanRel] = struct{}{}
+			continue
+		}
+		expectedFiles[cleanRel] = entry
+	}
+
+	return expectedFiles, expectedDirs
+}
+
+func addExpectedParentDirs(relPath string, expectedDirs map[string]struct{}) {
+	for parent := filepath.Dir(relPath); parent != "."; parent = filepath.Dir(parent) {
+		expectedDirs[parent] = struct{}{}
+	}
 }
 
 func pathExists(path string) (bool, error) {

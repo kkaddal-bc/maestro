@@ -45,19 +45,19 @@ func newUpdateSkillsCommand() *cobra.Command {
 func runUpdateSkills(cmd *cobra.Command, _ []string) error {
 	client := newUpdateSkillsFetcher()
 
-	manifestData, err := client.FetchManifest()
+	skillsManifest, err := client.FetchManifest()
 	if err != nil {
 		return err
 	}
 
-	installTargets := detectInstallTargets()
-	selected := installedSkills(manifestData, installTargets)
+	activeTargets := detectInstallTargets()
+	selected := installedSkills(skillsManifest, activeTargets)
 	if len(selected) == 0 {
 		printUpToDateSummary(cmd.OutOrStdout())
 		return nil
 	}
 
-	archive, err := client.FetchSkillsArchive(manifestData.Version)
+	archive, err := client.FetchSkillsArchive(skillsManifest.Version)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func runUpdateSkills(cmd *cobra.Command, _ []string) error {
 	}
 	defer gz.Close()
 
-	result, err := installer.Update(selected, gz, installTargets)
+	result, err := installer.Update(selected, gz, activeTargets)
 	if err != nil {
 		return err
 	}
@@ -88,23 +88,22 @@ func runUpdateSkills(cmd *cobra.Command, _ []string) error {
 }
 
 func installedSkills(manifestData *manifest.Manifest, installTargets []targets.Target) []string {
-	installed := map[string]struct{}{}
+	skills := make([]string, 0, len(manifestData.Skills))
 	for _, skill := range manifestData.Skills {
-		for _, target := range installTargets {
-			if skillInstalled(target.Path, skill.Name) {
-				installed[skill.Name] = struct{}{}
-				break
-			}
-		}
-	}
-
-	skills := make([]string, 0, len(installed))
-	for _, skill := range manifestData.Skills {
-		if _, ok := installed[skill.Name]; ok {
+		if skillInstalledOnAnyTarget(installTargets, skill.Name) {
 			skills = append(skills, skill.Name)
 		}
 	}
 	return skills
+}
+
+func skillInstalledOnAnyTarget(installTargets []targets.Target, skillName string) bool {
+	for _, target := range installTargets {
+		if skillInstalled(target.Path, skillName) {
+			return true
+		}
+	}
+	return false
 }
 
 func skillInstalled(targetRoot, skillName string) bool {
@@ -118,7 +117,8 @@ func printUpdateSummary(out io.Writer, home string, result installer.UpdateResul
 		updatedByTarget[item.Target] = append(updatedByTarget[item.Target], item.Skill)
 	}
 
-	for _, target := range targets.Known(home) {
+	knownTargets := targets.Known(home)
+	for _, target := range knownTargets {
 		if skills, ok := updatedByTarget[target.Path]; ok {
 			for _, skill := range skills {
 				fmt.Fprintf(out, "✓ updated %s → %s\n", skill, displayTargetPath(home, target.Path))
@@ -128,5 +128,5 @@ func printUpdateSummary(out io.Writer, home string, result installer.UpdateResul
 }
 
 func printUpToDateSummary(out io.Writer) {
-	_, _ = fmt.Fprintln(out, "skills are already up to date")
+	fmt.Fprintln(out, "skills are already up to date")
 }
