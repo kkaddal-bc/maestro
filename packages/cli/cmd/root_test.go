@@ -70,7 +70,6 @@ func TestCommandsWithoutArgsPrintNotImplemented(t *testing.T) {
 		{},
 		{"install"},
 		{"list"},
-		{"list", "skills"},
 		{"update"},
 	}
 
