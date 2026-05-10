@@ -92,12 +92,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-
-	printUpdateSummary(cmd.OutOrStdout(), home, result)
+	printUpdateSummary(cmd.OutOrStdout(), result)
 	return nil
 }
 
@@ -151,7 +146,7 @@ func skillInstalled(targetRoot, skillName string) bool {
 	return err == nil && info.IsDir()
 }
 
-func printUpdateSummary(out io.Writer, home string, result installer.UpdateResult) {
+func printUpdateSummary(out io.Writer, result installer.UpdateResult) {
 	for _, item := range result.Updated {
 		fmt.Fprintln(out, style.Success.Render(fmt.Sprintf("✓ Updated %s", item.Skill)))
 	}

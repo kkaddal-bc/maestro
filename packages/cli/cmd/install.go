@@ -189,19 +189,20 @@ func printInstallSummary(out io.Writer, home string, activeTargets []targets.Tar
 	}
 
 	installedSkills := uniqueSkills(result.Installed)
-	missingTarget := false
+	hasInactiveTargets := false
+	knownTargets := targets.Known(home)
 
-	for _, target := range targets.Known(home) {
+	for _, target := range knownTargets {
 		if _, ok := active[target.Path]; ok {
 			for _, skill := range installedByTarget[target.Path] {
 				fmt.Fprintln(out, style.Success.Render(fmt.Sprintf("✓ Installed %s", skill)))
 			}
 			continue
 		}
-		missingTarget = true
+		hasInactiveTargets = true
 	}
 
-	if missingTarget {
+	if hasInactiveTargets {
 		for _, skill := range installedSkills {
 			fmt.Fprintln(out, style.Secondary.Render(fmt.Sprintf("- %s not found", skill)))
 		}
