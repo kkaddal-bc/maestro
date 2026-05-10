@@ -1,89 +1,62 @@
 ---
 name: maestro-snap
-description: Snapshot a Kotlin repository's full technical surface area into living markdown docs. Scans and documents HTTP/REST endpoints, WebSocket events, gRPC services (with request/response DTOs), and database schemas (entities, columns, relations, indexes). Targets Kotlin repos using Spring Boot, Ktor, JPA/Hibernate, Exposed, and Flyway/Liquibase. Writes .maestro/maestro-interface/api-contracts.md, db-schema.md, and a minimal AGENTS.md at the repo root pointing agents at .maestro/ before they scan code. Use when user wants to document a service, create living interface docs, snapshot API contracts, or runs /maestro-snap.
+description: Snapshot a service's technical surface area into living markdown docs. Document HTTP, WebSocket, gRPC, and database contracts by orienting from the project manifest, then using direct contract artifacts when present. Writes .maestro/maestro-interface/api-contracts.md, db-schema.md, and a minimal AGENTS.md at the repo root pointing agents at .maestro/ before they scan code. Use when a user wants living interface docs, API contract snapshots, or runs /maestro-snap.
 ---
 
 # Maestro Snap
 
-Generate living-document markdown files that capture the complete technical surface of this service, plus a minimal `AGENTS.md` at the repo root that points agents at `.maestro/` before they scan code.
+Generate living markdown files that capture the service surface area, plus a minimal `AGENTS.md` at the repo root that points agents at `.maestro/` before they scan code.
 
 **Output:**
-- `.maestro/maestro-interface/api-contracts.md` — HTTP, WebSocket, gRPC contracts + DTOs
-- `.maestro/maestro-interface/db-schema.md` — entities, columns, relationships, indexes
+- `.maestro/maestro-interface/api-contracts.md` — HTTP, WebSocket, and gRPC contracts
+- `.maestro/maestro-interface/db-schema.md` — database tables, columns, relationships, indexes
 - `AGENTS.md` — single navigation rule: check `.maestro/` first
 
 ## Workflow
 
 ### Step 1 — Orient
 
-Identify the service name, framework, and ORM in use. Run in parallel:
+Read the project manifest first to identify the stack and runtime shape. Run in parallel:
 
 ```bash
-# Service name
-grep -m1 "rootProject.name\|artifactId" settings.gradle.kts settings.gradle pom.xml 2>/dev/null | head -3
+# Project manifest
+{
+  cat go.mod 2>/dev/null || cat package.json 2>/dev/null || cat Cargo.toml 2>/dev/null || cat build.gradle.kts 2>/dev/null || cat pom.xml 2>/dev/null
+} | head -40
 
-# Framework
-grep -r "spring-boot\|ktor\|micronaut" build.gradle.kts build.gradle pom.xml 2>/dev/null | head -5
-
-# ORM / DB layer
-grep -r "spring-data-jpa\|hibernate\|exposed\|jooq\|r2dbc" build.gradle.kts build.gradle pom.xml 2>/dev/null | head -5
-
-# Migration tool
-find . \( -name "*.sql" -path "*/flyway/*" -o -name "*.sql" -path "*/migration/*" -o -name "*.xml" -path "*/liquibase/*" \) \
-  -not -path "*/node_modules/*" | head -10
+# Package metadata when present
+cat package.json 2>/dev/null | head -80
 ```
 
-### Step 2 — Discover (run all in parallel)
+Use the manifest and built-in knowledge of the detected stack to infer where routes, handlers, models, migrations, and config usually live. Do not rely on hardcoded framework grep patterns.
+
+### Step 2 — Contract Artifact Fast Path
+
+Run these in parallel before broader code reading:
 
 ```bash
-# HTTP — Spring Boot controllers
-grep -rn "@RestController\|@Controller\b" --include="*.kt" -l | grep -v "/test/"
+# gRPC source of truth
+find . -name "*.proto" -not -path "*/build/*" -not -path "*/node_modules/*"
 
-# HTTP — Ktor routing
-grep -rn "fun Route\.\|routing\s*{\|route(\|get(\|post(\|put(\|delete(\|patch(" \
-  --include="*.kt" -l | grep -v "/test/"
-
-# WebSocket — Spring
-grep -rn "@MessageMapping\|@SubscribeMapping\|@EnableWebSocket" \
-  --include="*.kt" -l | grep -v "/test/"
-
-# WebSocket — Ktor
-grep -rn "webSocket(\|WebSocket" --include="*.kt" -l | grep -v "/test/"
-
-# gRPC — proto files
-find . -name "*.proto" -not -path "*/build/*"
-
-# gRPC — Kotlin stubs / service impls
-grep -rn "GrpcService\|BindableService\|ImplBase\|@GrpcMethod" \
-  --include="*.kt" -l | grep -v "/test/"
-
-# JPA entities
-grep -rn "@Entity\b" --include="*.kt" -l | grep -v "/test/"
-
-# Exposed tables
-grep -rn "object .* : Table\(\|: IntIdTable\|: LongIdTable\|: UUIDTable" \
-  --include="*.kt" -l | grep -v "/test/"
-
-# Flyway migrations
-find . -name "V*.sql" -path "*/migration*" -not -path "*/build/*" | sort
-
-# Liquibase
-find . \( -name "*.xml" -o -name "*.yaml" -o -name "*.yml" \) \
-  -path "*/liquibase/*" -not -path "*/build/*"
-
-# DTOs / request-response data classes
-grep -rn "data class .* {" --include="*.kt" -l | grep -v "/test/"
+# HTTP contract source of truth
+find . \( -name "openapi.yml" -o -name "openapi.yaml" -o -name "openapi.json" \
+  -o -name "swagger.yml" -o -name "swagger.yaml" -o -name "swagger.json" \) \
+  -not -path "*/node_modules/*" -not -path "*/build/*"
 ```
 
-### Step 3 — Read and extract
+- Proto files found → read them directly as the source of truth for gRPC contracts.
+- OpenAPI/Swagger spec found → read it directly as the source of truth for HTTP contracts.
+- Neither found → continue to the broader code-reading pass.
 
-Read every discovered file. For each, extract what is documented in [SCAN-PATTERNS.md](SCAN-PATTERNS.md).
+### Step 3 — Read and Extract
 
-- Read DTO/data class files **before** writing output so you can inline field tables.
-- For gRPC, read `.proto` files directly — they are the source of truth.
-- For Flyway, read each migration SQL file in version order to catch columns not in entities.
+Read every discovered file. Use the detected stack from Step 1 to understand where to look next.
 
-### Step 4 — Write output
+- Prefer direct contract artifacts over inferred endpoints when they exist.
+- Read proto files before writing output so service and message definitions are authoritative.
+- If no direct contract artifact exists, read the code that defines routes, handlers, models, and migrations.
+
+### Step 4 — Write Output
 
 ```bash
 mkdir -p .maestro/maestro-interface
@@ -92,10 +65,11 @@ mkdir -p .maestro/maestro-interface
 Write both files using the exact structure in [OUTPUT-TEMPLATES.md](OUTPUT-TEMPLATES.md).
 
 Rules:
-- Regenerate fully each run — never append to existing files.
+- Regenerate fully each run; never append to existing files.
 - Every section has a slug anchor for deep-linking.
 - Include `file:line` source references for traceability.
-- Mark auth on every HTTP endpoint: `public`, `🔒 JWT`, `🔒 OAuth2`, `🔒 Role: ADMIN`, etc.
+- Mark auth on every HTTP endpoint and websocket entry with the clearest available signal.
+- Use `🔒 (inferred)` when auth cannot be determined with certainty from explicit configuration.
 - If a DTO cannot be resolved, write `(type unresolved)` rather than omitting the row.
 - Sort HTTP endpoints by path then method. Sort entities alphabetically.
 
@@ -103,7 +77,7 @@ Rules:
 
 Create `AGENTS.md` at the repository root if it does not already exist. If it already exists, leave it untouched.
 
-The file must be minimal — no service-specific details, no domain knowledge, no snapshot data. It is purely a navigation rule for agents:
+The file must be minimal and purely navigational:
 
 ```markdown
 # AGENTS.md
@@ -121,4 +95,4 @@ These files map the full surface of the service and include source file referenc
 Print a brief summary:
 - Files written and line counts
 - Counts: N HTTP endpoints, N WS events, N gRPC methods, N entities
-- Any gaps (e.g. "2 controllers had unresolved DTO types — marked in output")
+- Any gaps, such as unresolved DTO types or inferred auth markers

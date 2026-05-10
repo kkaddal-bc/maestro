@@ -1,6 +1,8 @@
 # Output Templates
 
-Exact markdown structure for the two generated files. Fill in extracted data; omit entire sections if none exist (e.g. no gRPC → omit the gRPC section entirely).
+Exact markdown structure for the two generated files. Fill in extracted data; omit entire sections if none exist.
+
+Use `🔒 (inferred)` whenever auth cannot be determined with confidence from explicit configuration.
 
 ---
 
@@ -20,15 +22,15 @@ Exact markdown structure for the two generated files. Fill in extracted data; om
 ## HTTP Endpoints
 
 ### `{METHOD} {/full/path}` {#{method-full-path}}
-**Source:** `{file}:{line}`  
-**Auth:** {public | 🔒 JWT | 🔒 API Key | 🔒 Role: X}  
-**Controller:** `{ControllerClass}.{methodName}`
+**Source:** `{file}:{line}`
+**Auth:** {public | 🔒 (inferred) | 🔒 JWT | 🔒 API Key | 🔒 OAuth2 | 🔒 Role: X}
+**Handler:** `{HandlerName}.{methodName}`
 
-**Request Body** — `{RequestDtoClass}` _(omit section if no body)_
+**Request Body** — `{RequestType}` _(omit section if no body)_
 
 | Field | Type | Required | Validation |
 |-------|------|----------|------------|
-| {field} | {type} | yes/no | {decorators or "—"} |
+| {field} | {type} | yes/no | {rules or "—"} |
 
 **Path Params** _(omit if none)_
 
@@ -42,7 +44,7 @@ Exact markdown structure for the two generated files. Fill in extracted data; om
 |-------|------|----------|---------|
 | {page} | number | no | 1 |
 
-**Response** — `{ResponseDtoClass}` | Status `{200 | 201 | 204}`
+**Response** — `{ResponseType}` | Status `{200 | 201 | 204}`
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -61,15 +63,15 @@ Exact markdown structure for the two generated files. Fill in extracted data; om
 
 ## WebSocket Events
 
-**Namespace:** `{/namespace or /}`  
-**Source:** `{gateway-file}:{line}`  
-**Auth:** {public | 🔒 JWT on connection}
+**Namespace:** `{/namespace or /}`
+**Source:** `{gateway-file}:{line}`
+**Auth:** {public | 🔒 (inferred) | 🔒 JWT on connection}
 
 ### Incoming: `{event:name}` {#{ws-in-event-name}}
 
 | Field | Type | Required | Validation |
 |-------|------|----------|------------|
-| {field} | {type} | yes/no | {decorators} |
+| {field} | {type} | yes/no | {rules} |
 
 **Emits back:** `{ack-event-name}` _(omit if void)_
 
@@ -90,13 +92,13 @@ Exact markdown structure for the two generated files. Fill in extracted data; om
 
 ## gRPC Services
 
-**Proto:** `{path/to/file.proto}`  
+**Proto:** `{path/to/file.proto}`
 **Package:** `{proto-package}`
 
 ### Service: `{ServiceName}` {#{grpc-servicename}}
 
 #### `{MethodName}` {#{grpc-servicename-methodname}}
-**Signature:** `rpc {MethodName} ({RequestMsg}) returns ({stream?} {ResponseMsg})`  
+**Signature:** `rpc {MethodName} ({RequestMsg}) returns ({stream?} {ResponseMsg})`
 **Streaming:** {unary | server-streaming | client-streaming | bidirectional}
 
 **Request — `{RequestMsg}`**
@@ -120,7 +122,7 @@ Exact markdown structure for the two generated files. Fill in extracted data; om
 
 ```markdown
 # Database Schema
-> **Service:** {service-name} | **Generated:** {YYYY-MM-DD} | **ORM:** {TypeORM | Prisma | Sequelize | raw SQL}
+> **Service:** {service-name} | **Generated:** {YYYY-MM-DD} | **ORM:** {ORM or storage style}
 
 ## Table of Contents
 - [Entities](#entities)
@@ -136,7 +138,7 @@ Exact markdown structure for the two generated files. Fill in extracted data; om
 | Column | Type | Constraints | Default | Notes |
 |--------|------|-------------|---------|-------|
 | id | uuid | PK | gen_random_uuid() | |
-| {col} | {pg-type} | {NOT NULL / UNIQUE / FK→table.col} | {value or "—"} | {notes or "—"} |
+| {col} | {db-type} | {NOT NULL / UNIQUE / FK→table.col} | {value or "—"} | {notes or "—"} |
 | created_at | timestamptz | NOT NULL | now() | |
 | updated_at | timestamptz | NOT NULL | now() | |
 | deleted_at | timestamptz | nullable | — | soft-delete |
@@ -164,7 +166,7 @@ Exact markdown structure for the two generated files. Fill in extracted data; om
 
 ## Relationship Map
 
-Text ERD — one line per relation, entity names as written above.
+Text ERD - one line per relation, entity names as written above.
 
 ```
 users           ||--o{ orders          : "places"
@@ -179,5 +181,5 @@ Use crow's foot notation:
 - `}o` zero or many
 - `}|` one or many
 
-_(This section is best-effort — include only relations you can confirm from entity files or migrations.)_
+_(This section is best-effort - include only relations you can confirm from entity files or migrations.)_
 ```
