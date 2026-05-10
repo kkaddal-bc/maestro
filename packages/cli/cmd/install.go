@@ -30,7 +30,7 @@ var (
 )
 
 func newInstallCommand() *cobra.Command {
-	cmd := newNotImplementedCommand("install", "Install related commands")
+	cmd := newNotImplementedCommand("install", "Install skills into configured targets")
 
 	cmd.AddCommand(newInstallSkillsCommand())
 
