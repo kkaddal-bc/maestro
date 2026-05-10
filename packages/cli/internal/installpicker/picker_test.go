@@ -48,3 +48,12 @@ func TestResolveSelectionDefaultsToAllSkillsWhenNothingSelected(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveSelectionPreservesExplicitSkillSelection(t *testing.T) {
+	skills := []string{"maestro-snap", "other-skill"}
+
+	got := resolveSelection([]string{"other-skill"}, skills)
+	if len(got) != 1 || got[0] != "other-skill" {
+		t.Fatalf("resolveSelection(%#v, skills) = %#v, want explicit selection", []string{"other-skill"}, got)
+	}
+}

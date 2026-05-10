@@ -82,7 +82,10 @@ func containsValue(values []string, want string) bool {
 }
 
 func resolveSelection(selected, skills []string) []string {
-	if len(selected) == 0 || containsValue(selected, installAllOptionValue) {
+	if len(selected) == 0 {
+		return skills
+	}
+	if containsValue(selected, installAllOptionValue) {
 		return skills
 	}
 	return selected
