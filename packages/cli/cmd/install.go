@@ -3,13 +3,7 @@ package cmd
 import "github.com/spf13/cobra"
 
 func newInstallCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "install",
-		Short: "Install related commands",
-		Run: func(cmd *cobra.Command, args []string) {
-			printNotImplemented(cmd)
-		},
-	}
+	cmd := newNotImplementedCommand("install", "Install related commands")
 
 	cmd.AddCommand(newInstallSkillsCommand())
 
@@ -17,12 +11,8 @@ func newInstallCommand() *cobra.Command {
 }
 
 func newInstallSkillsCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "skills [skill-name]",
-		Short: "Install maestro skills",
-		Args:  cobra.MaximumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			printNotImplemented(cmd)
-		},
-	}
+	cmd := newNotImplementedCommand("skills [skill-name]", "Install maestro skills")
+	cmd.Args = cobra.MaximumNArgs(1)
+
+	return cmd
 }

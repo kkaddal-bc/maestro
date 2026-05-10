@@ -2,22 +2,29 @@ package cmd
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 )
 
-func TestRootHelpShowsVerbFirstSubcommands(t *testing.T) {
+func executeCommand(t *testing.T, args []string) string {
+	t.Helper()
+
 	root := NewRootCommand("dev")
-	var stdout, stderr bytes.Buffer
+	var stdout bytes.Buffer
 	root.SetOut(&stdout)
-	root.SetErr(&stderr)
-	root.SetArgs([]string{"--help"})
+	root.SetErr(io.Discard)
+	root.SetArgs(args)
 
 	if err := root.Execute(); err != nil {
-		t.Fatalf("execute help: %v", err)
+		t.Fatalf("execute command: %v", err)
 	}
 
-	out := stdout.String()
+	return stdout.String()
+}
+
+func TestRootHelpShowsVerbFirstSubcommands(t *testing.T) {
+	out := executeCommand(t, []string{"--help"})
 	for _, want := range []string{"install", "list", "update"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("help output missing %q:\n%s", want, out)
@@ -50,17 +57,7 @@ func TestSkillsHelpShowsExpectedUsage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			root := NewRootCommand("dev")
-			var stdout, stderr bytes.Buffer
-			root.SetOut(&stdout)
-			root.SetErr(&stderr)
-			root.SetArgs(tt.args)
-
-			if err := root.Execute(); err != nil {
-				t.Fatalf("execute help: %v", err)
-			}
-
-			out := stdout.String()
+			out := executeCommand(t, tt.args)
 			if !strings.Contains(out, tt.want) {
 				t.Fatalf("help output missing %q:\n%s", tt.want, out)
 			}
@@ -81,17 +78,7 @@ func TestCommandsWithoutArgsPrintNotImplemented(t *testing.T) {
 
 	for _, args := range tests {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
-			root := NewRootCommand("dev")
-			var stdout, stderr bytes.Buffer
-			root.SetOut(&stdout)
-			root.SetErr(&stderr)
-			root.SetArgs(args)
-
-			if err := root.Execute(); err != nil {
-				t.Fatalf("execute command: %v", err)
-			}
-
-			if got := strings.TrimSpace(stdout.String()); got != "not implemented" {
+			if got := strings.TrimSpace(executeCommand(t, args)); got != "not implemented" {
 				t.Fatalf("unexpected output %q", got)
 			}
 		})

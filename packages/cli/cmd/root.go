@@ -7,18 +7,9 @@ import (
 )
 
 func NewRootCommand(version string) *cobra.Command {
-	root := &cobra.Command{
-		Use:     "maestro",
-		Short:   "Maestro CLI",
-		Version: version,
-		Run: func(cmd *cobra.Command, args []string) {
-			printNotImplemented(cmd)
-		},
-	}
-
-	root.AddCommand(newInstallCommand())
-	root.AddCommand(newListCommand())
-	root.AddCommand(newUpdateCommand())
+	root := newNotImplementedCommand("maestro", "Maestro CLI")
+	root.Version = version
+	root.AddCommand(newInstallCommand(), newListCommand(), newUpdateCommand())
 
 	return root
 }

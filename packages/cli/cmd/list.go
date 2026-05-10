@@ -3,13 +3,7 @@ package cmd
 import "github.com/spf13/cobra"
 
 func newListCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List related commands",
-		Run: func(cmd *cobra.Command, args []string) {
-			printNotImplemented(cmd)
-		},
-	}
+	cmd := newNotImplementedCommand("list", "List related commands")
 
 	cmd.AddCommand(newListSkillsCommand())
 
@@ -17,11 +11,5 @@ func newListCommand() *cobra.Command {
 }
 
 func newListSkillsCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "skills",
-		Short: "List maestro skills",
-		Run: func(cmd *cobra.Command, args []string) {
-			printNotImplemented(cmd)
-		},
-	}
+	return newNotImplementedCommand("skills", "List maestro skills")
 }
