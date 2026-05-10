@@ -94,6 +94,8 @@ Use `🔒 (inferred)` whenever auth cannot be determined with confidence from ex
 
 ## gRPC Services
 
+Only include provided gRPC services; omit consumed services.
+
 **Proto:** `{path/to/file.proto}`
 **Package:** `{proto-package}`
 

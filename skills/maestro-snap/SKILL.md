@@ -64,6 +64,7 @@ find . \( -name "openapi.yml" -o -name "openapi.yaml" -o -name "openapi.json" \
 - Proto files found → read them directly as the source of truth for gRPC contracts.
 - OpenAPI/Swagger spec found → read it directly as the source of truth for HTTP contracts.
 - Neither found → continue to the broader code-reading pass.
+- After finding proto files, infer whether each gRPC service is provided or consumed before writing output. Combine file location, proto package namespace, and server registration patterns as layered signals. Only services the current repo registers as server implementations should be documented in `api-contracts.md`; consumed services stay out of the file and are only reported in Step 6.
 
 ### Step 3 — Read and Extract
 
@@ -71,6 +72,7 @@ Read every discovered file. Use the detected stack from Step 1 to understand whe
 
 - Prefer direct contract artifacts over inferred endpoints when they exist.
 - Read proto files before writing output so service and message definitions are authoritative.
+- When proto files are present, confirm ownership before writing the gRPC section. Prefer server registration evidence over client-only imports when deciding whether a service is provided or consumed.
 - If no direct contract artifact exists, read the code that defines routes, handlers, models, and migrations:
   - Open the server bootstrap, router setup, controllers, handlers, and adjacent tests.
   - Follow imports and registration calls to find the code paths that define routes or RPCs.
@@ -124,4 +126,5 @@ Snapped services:
 Print a brief summary:
 - Files written and line counts
 - Counts: N HTTP endpoints, N WS events, N gRPC methods, N entities
+- List any consumed gRPC services that were skipped, including the provider or package name when available, for example: `Skipped 2 consumed gRPC services (QuickNode, ExternalAuth): ownership inferred from registration patterns`
 - Any gaps, such as unresolved DTO types or inferred auth markers
