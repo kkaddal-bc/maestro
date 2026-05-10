@@ -222,3 +222,32 @@ Use crow's foot notation:
 
 _(This section is best-effort - include only relations you can confirm from entity files or migrations.)_
 ```
+
+---
+
+## `.maestro/maestro-interface/maestro.json`
+
+```json
+{
+  "schema_version": "1",
+  "id": "github.com/org/repo/service-name",
+  "name": "service-name",
+  "sha": "0123456789abcdef0123456789abcdef01234567",
+  "snapped_at": "2026-05-10T18:13:45Z",
+  "owners": ["@team-name"],
+  "dependencies": [
+    {
+      "type": "external",
+      "name": "quicknode",
+      "protocols": ["grpc"]
+    },
+    {
+      "type": "internal",
+      "id": "github.com/org/repo/service-auth",
+      "protocols": ["grpc"]
+    }
+  ]
+}
+```
+
+`maestro.json` is the machine-readable snapshot for registry consumption.
