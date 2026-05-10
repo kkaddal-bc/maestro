@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
-const installAllValue = "__install_all__"
+const installAllOptionValue = "__install_all__"
 
 type Selector interface {
 	Select(skills []string) ([]string, error)
@@ -45,9 +45,9 @@ func (s *HuhSelector) Select(skills []string) ([]string, error) {
 		return nil, errors.New("no skills available")
 	}
 
-	selected := []string{}
+	selected := make([]string, 0, len(skills))
 	options := make([]huh.Option[string], 0, len(skills)+1)
-	options = append(options, huh.NewOption("Install all", installAllValue))
+	options = append(options, huh.NewOption("Install all", installAllOptionValue))
 	for _, skill := range skills {
 		options = append(options, huh.NewOption(skill, skill))
 	}
@@ -75,14 +75,14 @@ func (s *HuhSelector) Select(skills []string) ([]string, error) {
 		return nil, err
 	}
 
-	if contains(selected, installAllValue) {
+	if containsValue(selected, installAllOptionValue) {
 		return skills, nil
 	}
 
 	return selected, nil
 }
 
-func contains(values []string, want string) bool {
+func containsValue(values []string, want string) bool {
 	for _, value := range values {
 		if value == want {
 			return true

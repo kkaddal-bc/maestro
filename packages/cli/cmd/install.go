@@ -18,6 +18,8 @@ import (
 	"golang.org/x/term"
 )
 
+const installSkillFlagName = "skill"
+
 type skillsFetcher interface {
 	FetchManifest() (*manifest.Manifest, error)
 	FetchSkillsArchive(version string) (io.ReadCloser, error)
@@ -46,32 +48,34 @@ var (
 )
 
 func newInstallCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "install",
-		Short: "Install skills into configured targets",
-		Args:  cobra.NoArgs,
-		RunE:  runInstallSkills,
-	}
-	cmd.Flags().String("skill", "", "Install a single skill by name")
+	cmd := newInstallCommandBase("install", "Install skills into configured targets", false)
 	cmd.AddCommand(newInstallSkillsCommand())
 
 	return cmd
 }
 
 func newInstallSkillsCommand() *cobra.Command {
+	return newInstallCommandBase("skills", "Install maestro skills", true)
+}
+
+func newInstallCommandBase(use, short string, hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "skills",
-		Short:  "Install maestro skills",
-		Hidden: true,
-		Args:   cobra.NoArgs,
-		RunE:   runInstallSkills,
+		Use:   use,
+		Short: short,
+		Args:  cobra.NoArgs,
+		RunE:  runInstallSkills,
 	}
-	cmd.Flags().String("skill", "", "Install a single skill by name")
+	cmd.Hidden = hidden
+	addInstallSkillFlag(cmd)
 
 	return cmd
 }
 
-func runInstallSkills(cmd *cobra.Command, args []string) error {
+func addInstallSkillFlag(cmd *cobra.Command) {
+	cmd.Flags().String(installSkillFlagName, "", "Install a single skill by name")
+}
+
+func runInstallSkills(cmd *cobra.Command, _ []string) error {
 	client := newSkillsFetcher()
 
 	manifestData, err := client.FetchManifest()
@@ -115,35 +119,36 @@ func runInstallSkills(cmd *cobra.Command, args []string) error {
 }
 
 func selectSkillsToInstall(cmd *cobra.Command, manifestData *manifest.Manifest, installTargets []targets.Target) ([]string, error) {
-	skillName, err := cmd.Flags().GetString("skill")
+	out := cmd.OutOrStdout()
+
+	skillName, err := cmd.Flags().GetString(installSkillFlagName)
 	if err != nil {
 		return nil, err
 	}
 	if skillName != "" {
-		name := skillName
-		if !manifestHasSkill(manifestData, name) {
-			return nil, fmt.Errorf("unknown skill %q", name)
+		if !manifestHasSkill(manifestData, skillName) {
+			return nil, fmt.Errorf("unknown skill %q", skillName)
 		}
-		return filterInstalledSkills(cmd.OutOrStdout(), []string{name}, installTargets), nil
+		return excludeInstalledSkills(out, []string{skillName}, installTargets), nil
 	}
 
-	skills := skillNames(manifestData)
+	skills := manifestSkillNames(manifestData)
 	if len(skills) == 0 {
 		return nil, errors.New("manifest contains no skills")
 	}
 	if isTerminal(cmd.InOrStdin()) {
-		picker := newInstallPicker(cmd.InOrStdin(), cmd.OutOrStdout())
+		picker := newInstallPicker(cmd.InOrStdin(), out)
 		selected, err := picker.Pick(skills)
 		if err != nil {
 			return nil, err
 		}
-		return filterInstalledSkills(cmd.OutOrStdout(), selected, installTargets), nil
+		return excludeInstalledSkills(out, selected, installTargets), nil
 	}
 
-	return filterInstalledSkills(cmd.OutOrStdout(), skills, installTargets), nil
+	return excludeInstalledSkills(out, skills, installTargets), nil
 }
 
-func skillNames(manifestData *manifest.Manifest) []string {
+func manifestSkillNames(manifestData *manifest.Manifest) []string {
 	skills := make([]string, 0, len(manifestData.Skills))
 	for _, skill := range manifestData.Skills {
 		skills = append(skills, skill.Name)
@@ -160,7 +165,7 @@ func manifestHasSkill(manifestData *manifest.Manifest, name string) bool {
 	return false
 }
 
-func filterInstalledSkills(out io.Writer, requested []string, installTargets []targets.Target) []string {
+func excludeInstalledSkills(out io.Writer, requested []string, installTargets []targets.Target) []string {
 	selected := make([]string, 0, len(requested))
 	for _, skill := range requested {
 		if skillInstalledOnTargets(installTargets, skill) {
