@@ -69,7 +69,6 @@ func TestCommandsWithoutArgsPrintNotImplemented(t *testing.T) {
 	tests := [][]string{
 		{},
 		{"install"},
-		{"install", "skills"},
 		{"list"},
 		{"list", "skills"},
 		{"update"},
