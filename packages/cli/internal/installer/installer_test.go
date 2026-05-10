@@ -61,6 +61,44 @@ func TestInstallUnknownSkillErrors(t *testing.T) {
 	}
 }
 
+func TestUpdateOnlyOverwritesInstalledSkills(t *testing.T) {
+	archive := buildUpdatedTestArchive(t)
+	home := t.TempDir()
+	maestroTarget := filepath.Join(home, ".maestro", "skills")
+	claudeTarget := filepath.Join(home, ".claude", "skills")
+	missingTarget := filepath.Join(home, ".agents", "skills")
+
+	mustWriteFile(t, filepath.Join(maestroTarget, "maestro-snap", "SKILL.md"), "old snap")
+	mustWriteFile(t, filepath.Join(maestroTarget, "maestro-snap", "stale.txt"), "stale")
+	mustWriteFile(t, filepath.Join(claudeTarget, "maestro-snap", "SKILL.md"), "old snap")
+	mustWriteFile(t, filepath.Join(claudeTarget, "other-skill", "SKILL.md"), "old other")
+
+	result, err := Update([]string{"maestro-snap"}, bytes.NewReader(archive), []targets.Target{
+		{Path: maestroTarget, Required: true},
+		{Path: claudeTarget, Required: false},
+		{Path: missingTarget, Required: false},
+	})
+	if err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
+	if len(result.Updated) != 2 {
+		t.Fatalf("len(result.Updated) = %d, want 2", len(result.Updated))
+	}
+	if result.UpToDate {
+		t.Fatal("Update() reported up to date, want changes")
+	}
+
+	assertFileContents(t, filepath.Join(maestroTarget, "maestro-snap", "SKILL.md"), "new snap")
+	assertFileContents(t, filepath.Join(claudeTarget, "maestro-snap", "SKILL.md"), "new snap")
+	assertFileContents(t, filepath.Join(claudeTarget, "other-skill", "SKILL.md"), "old other")
+	if _, err := os.Stat(filepath.Join(maestroTarget, "maestro-snap", "stale.txt")); !os.IsNotExist(err) {
+		t.Fatalf("stale file remains unexpectedly: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(missingTarget, "maestro-snap")); !os.IsNotExist(err) {
+		t.Fatalf("missing target was created unexpectedly: %v", err)
+	}
+}
+
 func buildTestArchive(t *testing.T) []byte {
 	t.Helper()
 
@@ -95,6 +133,47 @@ func buildTestArchive(t *testing.T) []byte {
 		t.Fatalf("Close(): %v", err)
 	}
 	return buf.Bytes()
+}
+
+func buildUpdatedTestArchive(t *testing.T) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	files := map[string]string{
+		"maestro-snap/SKILL.md": "new snap",
+		"other-skill/SKILL.md":   "new other",
+	}
+
+	for name, contents := range files {
+		if err := tw.WriteHeader(&tar.Header{
+			Name:     name,
+			Mode:     0o644,
+			Size:     int64(len(contents)),
+			Typeflag: tar.TypeReg,
+		}); err != nil {
+			t.Fatalf("WriteHeader(%q): %v", name, err)
+		}
+		if _, err := io.WriteString(tw, contents); err != nil {
+			t.Fatalf("WriteString(%q): %v", name, err)
+		}
+	}
+
+	if err := tw.Close(); err != nil {
+		t.Fatalf("Close(): %v", err)
+	}
+	return buf.Bytes()
+}
+
+func mustWriteFile(t *testing.T, path, contents string) {
+	t.Helper()
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("MkdirAll(%s): %v", path, err)
+	}
+	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+		t.Fatalf("WriteFile(%s): %v", path, err)
+	}
 }
 
 func assertFileContents(t *testing.T, path, want string) {
