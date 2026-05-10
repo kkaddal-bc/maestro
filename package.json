@@ -1,0 +1,8 @@
+{
+  "name": "workspace",
+  "private": true,
+  "scripts": {
+    "typecheck": "cd packages/cli && go build ./...",
+    "test": "cd packages/cli && go test ./..."
+  }
+}
