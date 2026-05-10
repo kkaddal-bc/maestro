@@ -9,11 +9,12 @@ import (
 
 func TestMaestroSnapDocsAreManifestFirstAndLanguageAgnostic(t *testing.T) {
 	root := repoRoot(t)
+	skillDir := filepath.Join(root, "skills", "maestro-snap")
 
-	skill := readFile(t, filepath.Join(root, "skills", "maestro-snap", "SKILL.md"))
-	templates := readFile(t, filepath.Join(root, "skills", "maestro-snap", "OUTPUT-TEMPLATES.md"))
+	skill := readFile(t, filepath.Join(skillDir, "SKILL.md"))
+	outputTemplates := readFile(t, filepath.Join(skillDir, "OUTPUT-TEMPLATES.md"))
 
-	for _, want := range []string{
+	requiredSkillSnippets := []string{
 		"go.mod",
 		"package.json",
 		"Cargo.toml",
@@ -24,13 +25,14 @@ func TestMaestroSnapDocsAreManifestFirstAndLanguageAgnostic(t *testing.T) {
 		"Proto files found",
 		"OpenAPI/Swagger spec found",
 		"AGENTS.md",
-	} {
+	}
+	for _, want := range requiredSkillSnippets {
 		if !strings.Contains(skill, want) {
 			t.Fatalf("SKILL.md missing %q", want)
 		}
 	}
 
-	for _, forbidden := range []string{
+	forbiddenSkillSnippets := []string{
 		"--include=\"*.kt\"",
 		"@RestController",
 		"@Controller",
@@ -39,29 +41,31 @@ func TestMaestroSnapDocsAreManifestFirstAndLanguageAgnostic(t *testing.T) {
 		"Spring Boot",
 		"Exposed",
 		"data class",
-	} {
+	}
+	for _, forbidden := range forbiddenSkillSnippets {
 		if strings.Contains(skill, forbidden) {
 			t.Fatalf("SKILL.md still contains %q", forbidden)
 		}
 	}
 
-	if !strings.Contains(templates, "🔒 (inferred)") {
+	if !strings.Contains(outputTemplates, "🔒 (inferred)") {
 		t.Fatalf("OUTPUT-TEMPLATES.md missing inferred auth marker")
 	}
 
-	for _, forbidden := range []string{
+	forbiddenTemplateSnippets := []string{
 		"data class",
 		"@field:",
 		"ResponseEntity<",
 		"Kotlin",
 		"Spring Boot",
-	} {
-		if strings.Contains(templates, forbidden) {
+	}
+	for _, forbidden := range forbiddenTemplateSnippets {
+		if strings.Contains(outputTemplates, forbidden) {
 			t.Fatalf("OUTPUT-TEMPLATES.md still contains %q", forbidden)
 		}
 	}
 
-	if _, err := os.Stat(filepath.Join(root, "skills", "maestro-snap", "SCAN-PATTERNS.md")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(skillDir, "SCAN-PATTERNS.md")); !os.IsNotExist(err) {
 		t.Fatalf("SCAN-PATTERNS.md should not exist")
 	}
 }

@@ -20,7 +20,9 @@ Read the project manifest first to identify the stack and runtime shape. Run in 
 
 ```bash
 # Project manifest
-cat go.mod 2>/dev/null || cat package.json 2>/dev/null || cat Cargo.toml 2>/dev/null || cat build.gradle.kts 2>/dev/null || cat pom.xml 2>/dev/null | head -40
+{
+  cat go.mod 2>/dev/null || cat package.json 2>/dev/null || cat Cargo.toml 2>/dev/null || cat build.gradle.kts 2>/dev/null || cat pom.xml 2>/dev/null
+} | head -40
 
 # Package metadata when present
 cat package.json 2>/dev/null | head -80
