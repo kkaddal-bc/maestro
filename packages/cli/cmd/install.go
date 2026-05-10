@@ -123,25 +123,20 @@ func printInstallSummary(out io.Writer, home string, activeTargets []targets.Tar
 		active[target.Path] = struct{}{}
 	}
 
-	for _, target := range installTargetOrder(home) {
+	installedByTarget := map[string][]string{}
+	for _, item := range result.Installed {
+		installedByTarget[item.Target] = append(installedByTarget[item.Target], item.Skill)
+	}
+
+	for _, target := range targets.Known(home) {
 		if _, ok := active[target.Path]; ok {
-			for _, item := range result.Installed {
-				if item.Target == target.Path {
-					fmt.Fprintf(out, "✓ installed %s → %s\n", item.Skill, displayTargetPath(home, target.Path))
-				}
+			for _, skill := range installedByTarget[target.Path] {
+				fmt.Fprintf(out, "✓ installed %s → %s\n", skill, displayTargetPath(home, target.Path))
 			}
 			continue
 		}
 
 		fmt.Fprintf(out, "- skipped %s (not found)\n", displayTargetPath(home, target.Path))
-	}
-}
-
-func installTargetOrder(home string) []targets.Target {
-	return []targets.Target{
-		{Path: filepath.Join(home, ".maestro", "skills"), Required: true},
-		{Path: filepath.Join(home, ".claude", "skills"), Required: false},
-		{Path: filepath.Join(home, ".agents", "skills"), Required: false},
 	}
 }
 

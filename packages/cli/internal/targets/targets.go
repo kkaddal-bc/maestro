@@ -19,21 +19,29 @@ func Detect() []Target {
 }
 
 func detect(home string) []Target {
-	targets := []Target{
-		{Path: filepath.Join(home, ".maestro", "skills"), Required: true},
-	}
+	knownTargets := Known(home)
 
-	for _, parent := range []string{".claude", ".agents"} {
-		parentPath := filepath.Join(home, parent)
-		info, err := os.Stat(parentPath)
-		if err != nil || !info.IsDir() {
+	detected := make([]Target, 0, len(knownTargets))
+	for _, target := range knownTargets {
+		if target.Required || targetExists(target.Path) {
+			detected = append(detected, target)
 			continue
 		}
-		targets = append(targets, Target{
-			Path:     filepath.Join(parentPath, "skills"),
-			Required: false,
-		})
 	}
 
-	return targets
+	return detected
+}
+
+func Known(home string) []Target {
+	return []Target{
+		{Path: filepath.Join(home, ".maestro", "skills"), Required: true},
+		{Path: filepath.Join(home, ".claude", "skills"), Required: false},
+		{Path: filepath.Join(home, ".agents", "skills"), Required: false},
+	}
+}
+
+func targetExists(targetPath string) bool {
+	parentDir := filepath.Dir(targetPath)
+	info, err := os.Stat(parentDir)
+	return err == nil && info.IsDir()
 }
