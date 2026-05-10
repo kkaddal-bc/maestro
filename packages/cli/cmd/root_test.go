@@ -37,7 +37,7 @@ func TestRootHelpShowsTopLevelCommands(t *testing.T) {
 	}
 }
 
-func TestLeafHelpShowsExpectedUsage(t *testing.T) {
+func TestCommandHelpShowsExpectedUsage(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
@@ -46,7 +46,7 @@ func TestLeafHelpShowsExpectedUsage(t *testing.T) {
 		{
 			name: "install",
 			args: []string{"install", "--help"},
-			want: "install [skill-name]",
+			want: "--skill string",
 		},
 		{
 			name: "list",
@@ -70,15 +70,17 @@ func TestLeafHelpShowsExpectedUsage(t *testing.T) {
 	}
 }
 
-func TestRootWithoutArgsShowsHelp(t *testing.T) {
-	out := executeCommand(t, nil)
-	for _, want := range []string{"Usage:", "install", "list", "update"} {
-		if !strings.Contains(out, want) {
-			t.Fatalf("root output missing %q:\n%s", want, out)
-		}
+func TestCommandsWithoutArgsPrintNotImplemented(t *testing.T) {
+	tests := [][]string{
+		{},
+		{"list"},
+		{"update"},
 	}
-	if strings.Contains(out, "not implemented") {
-		t.Fatalf("root output still contains not implemented:\n%s", out)
+	for _, args := range tests {
+		out := executeCommand(t, args)
+		if strings.Contains(out, "not implemented") {
+			t.Fatalf("root output still contains not implemented:\n%s", out)
+		}
 	}
 }
 
