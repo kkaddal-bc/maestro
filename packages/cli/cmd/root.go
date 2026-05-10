@@ -1,19 +1,17 @@
 package cmd
 
-import (
-	"fmt"
-
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
 func NewRootCommand(version string) *cobra.Command {
-	root := newNotImplementedCommand("maestro", "Maestro CLI")
-	root.Version = version
+	root := &cobra.Command{
+		Use:     "maestro",
+		Short:   "Maestro CLI",
+		Version: version,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Help()
+		},
+	}
 	root.AddCommand(newInstallCommand(), newListCommand(), newUpdateCommand())
 
 	return root
-}
-
-func printNotImplemented(cmd *cobra.Command) {
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "not implemented")
 }

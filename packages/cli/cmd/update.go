@@ -26,17 +26,9 @@ var (
 )
 
 func newUpdateCommand() *cobra.Command {
-	cmd := newNotImplementedCommand("update", "Update installed skills to latest versions")
-
-	cmd.AddCommand(newUpdateSkillsCommand())
-
-	return cmd
-}
-
-func newUpdateSkillsCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "skills",
-		Short: "Update maestro skills",
+		Use:   "update",
+		Short: "Update installed skills to latest versions",
 		Args:  cobra.NoArgs,
 		RunE:  runUpdateSkills,
 	}

@@ -44,7 +44,7 @@ func TestListSkillsCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
 		}
 	}
 
-	cmd := newListSkillsCommand()
+	cmd := newListCommand()
 	var stdout bytes.Buffer
 	cmd.SetOut(&stdout)
 	cmd.SetErr(io.Discard)
@@ -93,7 +93,7 @@ func TestListSkillsCommandSucceedsWhenNothingIsInstalled(t *testing.T) {
 		}
 	}
 
-	cmd := newListSkillsCommand()
+	cmd := newListCommand()
 	var stdout bytes.Buffer
 	cmd.SetOut(&stdout)
 	cmd.SetErr(io.Discard)

@@ -16,8 +16,8 @@ import (
 type countingUpdateFetcher struct {
 	manifest      *manifest.Manifest
 	archive       []byte
-	manifestCalls  int
-	archiveCalls   int
+	manifestCalls int
+	archiveCalls  int
 }
 
 func (f *countingUpdateFetcher) FetchManifest() (*manifest.Manifest, error) {
@@ -53,7 +53,7 @@ func TestUpdateSkillsCommandUpdatesInstalledSkillsAndFetchesFreshManifestEachRun
 		},
 		archive: gzipUpdateArchive(t, map[string]string{
 			"maestro-snap/SKILL.md": "new snap",
-			"other-skill/SKILL.md":   "new other",
+			"other-skill/SKILL.md":  "new other",
 		}),
 	}
 
@@ -100,7 +100,7 @@ func TestUpdateSkillsCommandUpdatesInstalledSkillsAndFetchesFreshManifestEachRun
 func executeUpdateCommand(t *testing.T) string {
 	t.Helper()
 
-	cmd := newUpdateSkillsCommand()
+	cmd := newUpdateCommand()
 	var stdout bytes.Buffer
 	cmd.SetOut(&stdout)
 	cmd.SetErr(io.Discard)

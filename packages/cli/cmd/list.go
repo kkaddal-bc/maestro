@@ -13,16 +13,8 @@ import (
 )
 
 func newListCommand() *cobra.Command {
-	cmd := newNotImplementedCommand("list", "List skills and their installation status")
-
-	cmd.AddCommand(newListSkillsCommand())
-
-	return cmd
-}
-
-func newListSkillsCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "skills",
+		Use:   "list",
 		Short: "List maestro skills",
 		Args:  cobra.NoArgs,
 		RunE:  runListSkills,
