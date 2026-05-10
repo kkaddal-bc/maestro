@@ -8,34 +8,38 @@ import (
 )
 
 func TestMaestroSnapSkillDocumentsConsumedGrpcExclusion(t *testing.T) {
+	t.Run("skill markdown", func(t *testing.T) {
+		assertContainsAll(t, readMarkdown(t, filepath.Join("..", "..", "skills", "maestro-snap", "SKILL.md")), []string{
+			"After finding proto files, infer whether each gRPC service is provided or consumed",
+			"Only services the current repo registers as server implementations should be documented in `api-contracts.md`.",
+			"consumed gRPC services that were skipped",
+		})
+	})
+
+	t.Run("output templates", func(t *testing.T) {
+		assertContainsAll(t, readMarkdown(t, filepath.Join("..", "..", "skills", "maestro-snap", "OUTPUT-TEMPLATES.md")), []string{
+			"Only include provided gRPC services; omit consumed services.",
+		})
+	})
+}
+
+func readMarkdown(t *testing.T, path string) string {
 	t.Helper()
 
-	skillPath := filepath.Join("..", "..", "skills", "maestro-snap", "SKILL.md")
-	templatePath := filepath.Join("..", "..", "skills", "maestro-snap", "OUTPUT-TEMPLATES.md")
-
-	skill, err := os.ReadFile(skillPath)
+	content, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read skill markdown: %v", err)
-	}
-	template, err := os.ReadFile(templatePath)
-	if err != nil {
-		t.Fatalf("read output template markdown: %v", err)
+		t.Fatalf("read markdown %s: %v", path, err)
 	}
 
-	skillText := string(skill)
-	templateText := string(template)
+	return string(content)
+}
 
-	for _, want := range []string{
-		"After finding proto files, infer whether each gRPC service is provided or consumed",
-		"Only services the current repo registers as server implementations should be documented in `api-contracts.md`.",
-		"consumed gRPC services that were skipped",
-	} {
-		if !strings.Contains(skillText, want) {
-			t.Fatalf("SKILL.md missing %q", want)
+func assertContainsAll(t *testing.T, text string, wants []string) {
+	t.Helper()
+
+	for _, want := range wants {
+		if !strings.Contains(text, want) {
+			t.Fatalf("missing %q", want)
 		}
-	}
-
-	if !strings.Contains(templateText, "Only include provided gRPC services; omit consumed services.") {
-		t.Fatalf("OUTPUT-TEMPLATES.md missing consumed-service exclusion guidance")
 	}
 }
