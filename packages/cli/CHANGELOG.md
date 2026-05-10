@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/kkaddal-bc/maestro/compare/v0.2.1...v0.3.0) (2026-05-10)
+
+
+### Features
+
+* **skill:** rewrite maestro-snap for manifest-first contracts ([99f1462](https://github.com/kkaddal-bc/maestro/commit/99f146286d6e30e5ef052fd3a8fa9adcfdc00883))
+
+
+### Bug Fixes
+
+* **cli:** render shared accent color in CLI output ([0948d60](https://github.com/kkaddal-bc/maestro/commit/0948d608f50e7d665591d3846a2adbcb29c64fcb))
+* **cli:** simplify list status and unify accent color ([66303be](https://github.com/kkaddal-bc/maestro/commit/66303be5bc03e71f00b73fe976a5b8a519ad887c))
+* **installpicker:** default empty submit to all skills ([7cb5621](https://github.com/kkaddal-bc/maestro/commit/7cb5621a2b94806c9f981ce85de9990e5bc0ffed))
+* **maestro-snap:** add code-first fallback docs ([8ee3361](https://github.com/kkaddal-bc/maestro/commit/8ee3361fb094248365868ad04618871189274ea1))
+
 ## [0.2.1](https://github.com/kkaddal-bc/maestro/compare/v0.2.0...v0.2.1) (2026-05-10)
 
 
