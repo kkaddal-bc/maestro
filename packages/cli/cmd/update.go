@@ -11,6 +11,7 @@ import (
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/fetcher"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/installer"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/manifest"
+	"github.com/kkaddal-bc/maestro/packages/cli/internal/style"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/targets"
 	"github.com/spf13/cobra"
 )
@@ -151,23 +152,13 @@ func skillInstalled(targetRoot, skillName string) bool {
 }
 
 func printUpdateSummary(out io.Writer, home string, result installer.UpdateResult) {
-	updatedByTarget := map[string][]string{}
 	for _, item := range result.Updated {
-		updatedByTarget[item.Target] = append(updatedByTarget[item.Target], item.Skill)
-	}
-
-	knownTargets := targets.Known(home)
-	for _, target := range knownTargets {
-		if skills, ok := updatedByTarget[target.Path]; ok {
-			for _, skill := range skills {
-				fmt.Fprintf(out, "✓ updated %s → %s\n", skill, displayTargetPath(home, target.Path))
-			}
-		}
+		fmt.Fprintln(out, style.Success.Render(fmt.Sprintf("✓ Updated %s", item.Skill)))
 	}
 }
 
 func printUpToDateSummary(out io.Writer) {
-	fmt.Fprintln(out, "skills are already up to date")
+	fmt.Fprintln(out, style.Secondary.Render("- all skills are up to date"))
 }
 
 func addUpdateSkillFlag(cmd *cobra.Command) {

@@ -98,13 +98,18 @@ func TestInstallCommandInstallsSelectedSkillAndPrintsSummary(t *testing.T) {
 	}
 	out = stripANSI(out)
 	for _, want := range []string{
-		"✓ installed maestro-snap → ~/.maestro/skills/",
-		"✓ installed maestro-snap → ~/.claude/skills/",
-		"- skipped ~/.agents/skills/ (not found)",
+		"✓ Installed maestro-snap",
+		"- maestro-snap not found",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output missing %q:\n%s", want, out)
 		}
+	}
+	if strings.Contains(out, "→") {
+		t.Fatalf("output unexpectedly contains target paths:\n%s", out)
+	}
+	if got := strings.Count(out, "✓ Installed maestro-snap"); got != 2 {
+		t.Fatalf("installed count = %d, want 2:\n%s", got, out)
 	}
 }
 
@@ -177,14 +182,21 @@ func TestInstallSkillsCommandInstallsAllSkillsWhenNonInteractive(t *testing.T) {
 	}
 	out = stripANSI(out)
 	for _, want := range []string{
-		"✓ installed maestro-snap → ~/.maestro/skills/",
-		"✓ installed other-skill → ~/.maestro/skills/",
-		"✓ installed maestro-snap → ~/.claude/skills/",
-		"✓ installed other-skill → ~/.claude/skills/",
+		"✓ Installed maestro-snap",
+		"✓ Installed other-skill",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output missing %q:\n%s", want, out)
 		}
+	}
+	if strings.Contains(out, "→") {
+		t.Fatalf("output unexpectedly contains target paths:\n%s", out)
+	}
+	if got := strings.Count(out, "✓ Installed maestro-snap"); got != 2 {
+		t.Fatalf("installed maestro-snap count = %d, want 2:\n%s", got, out)
+	}
+	if got := strings.Count(out, "✓ Installed other-skill"); got != 2 {
+		t.Fatalf("installed other-skill count = %d, want 2:\n%s", got, out)
 	}
 }
 
@@ -234,7 +246,7 @@ func TestInstallSkillsCommandSkipsAlreadyInstalledSkill(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if got := stdout.String(); !strings.Contains(got, "skipped maestro-snap (already installed)") {
+	if got := stripANSI(stdout.String()); !strings.Contains(got, "- maestro-snap already installed") {
 		t.Fatalf("output missing skip notice:\n%s", got)
 	}
 }

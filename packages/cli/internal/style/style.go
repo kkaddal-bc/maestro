@@ -9,4 +9,5 @@ func init() {
 	lipgloss.SetColorProfile(termenv.TrueColor)
 }
 
-var Accent = lipgloss.NewStyle().Foreground(lipgloss.Color("51"))
+var Success = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+var Secondary = lipgloss.NewStyle().Faint(true)

@@ -56,6 +56,7 @@ func TestListCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
 		"SKILL",
 		"DESCRIPTION",
 		"STATUS",
+		"───",
 		"maestro-snap",
 		"other-skill",
 		"installed",

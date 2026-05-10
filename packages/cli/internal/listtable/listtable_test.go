@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/kkaddal-bc/maestro/packages/cli/internal/style"
 )
 
 func TestRenderProducesAlignedPlainTextAndTruncatesDescriptions(t *testing.T) {
@@ -48,11 +50,26 @@ func TestRenderProducesAlignedPlainTextAndTruncatesDescriptions(t *testing.T) {
 	}
 
 	lines := strings.Split(strings.TrimSpace(got), "\n")
-	if len(lines) != 3 {
-		t.Fatalf("rendered %d lines, want 3:\n%s", len(lines), got)
+	if len(lines) != 4 {
+		t.Fatalf("rendered %d lines, want 4:\n%s", len(lines), got)
+	}
+	if wantSeparator := strings.Repeat("─", len(lines[0])); !strings.Contains(got, wantSeparator) {
+		t.Fatalf("output missing separator %q:\n%s", wantSeparator, got)
 	}
 	if strings.Contains(got, "\t") {
 		t.Fatalf("output unexpectedly contains tabs:\n%s", got)
+	}
+}
+
+func TestStatusStyleUsesSuccessAndSecondary(t *testing.T) {
+	installed := statusStyle("installed", style.Success, style.Secondary).Render("installed")
+	if !strings.Contains(installed, "\x1b[") {
+		t.Fatalf("installed status missing ANSI styling: %q", installed)
+	}
+
+	notInstalled := statusStyle("not installed", style.Success, style.Secondary).Render("not installed")
+	if !strings.Contains(notInstalled, "\x1b[") {
+		t.Fatalf("not installed status missing ANSI styling: %q", notInstalled)
 	}
 }
 

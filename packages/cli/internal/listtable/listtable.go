@@ -35,12 +35,14 @@ func (r Renderer) Render(w io.Writer, headers []string, rows []Row) error {
 	widths := columnWidths(headers, normalizedRows)
 	useStyles := isTerminalWriter(w)
 	headerStyle := lipgloss.NewStyle().Bold(true)
-	installedStyle := style.Accent
+	installedStyle := style.Success
+	notInstalledStyle := style.Secondary
 
 	fmt.Fprintln(w, renderRow(headers, widths, headerStyle, nil, useStyles))
+	fmt.Fprintln(w, separatorLine(widths))
 	for _, row := range normalizedRows {
 		cells := row.cells()
-		styles := row.styles(installedStyle)
+		styles := row.styles(installedStyle, notInstalledStyle)
 		fmt.Fprintln(w, renderRow(cells, widths, lipgloss.Style{}, styles, useStyles))
 	}
 
@@ -118,19 +120,30 @@ func (row Row) cells() []string {
 	return []string{row.Name, row.Description, row.Status}
 }
 
-func (row Row) styles(installedStyle lipgloss.Style) []lipgloss.Style {
+func (row Row) styles(installedStyle, notInstalledStyle lipgloss.Style) []lipgloss.Style {
 	return []lipgloss.Style{
 		lipgloss.NewStyle(),
 		lipgloss.NewStyle(),
-		statusStyle(row.Status, installedStyle),
+		statusStyle(row.Status, installedStyle, notInstalledStyle),
 	}
 }
 
-func statusStyle(status string, installedStyle lipgloss.Style) lipgloss.Style {
+func statusStyle(status string, installedStyle, notInstalledStyle lipgloss.Style) lipgloss.Style {
 	if status == "installed" {
 		return installedStyle
 	}
-	return lipgloss.NewStyle()
+	return notInstalledStyle
+}
+
+func separatorLine(widths []int) string {
+	total := 0
+	for i, width := range widths {
+		total += width
+		if i < len(widths)-1 {
+			total += 2
+		}
+	}
+	return strings.Repeat("─", total)
 }
 
 func padRight(value string, width int) string {
