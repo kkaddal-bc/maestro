@@ -30,7 +30,7 @@ func (f *countingUpdateFetcher) FetchSkillsArchive(version string) (io.ReadClose
 	return io.NopCloser(bytes.NewReader(f.archive)), nil
 }
 
-func TestUpdateSkillsCommandUpdatesInstalledSkillsAndFetchesFreshManifestEachRun(t *testing.T) {
+func TestUpdateCommandUpdatesInstalledSkillsAndFetchesFreshManifestEachRun(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {

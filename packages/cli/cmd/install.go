@@ -29,17 +29,15 @@ var (
 )
 
 func newInstallCommand() *cobra.Command {
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "install [skill-name]",
 		Short: "Install maestro skills",
 		Args:  cobra.MaximumNArgs(1),
-		RunE:  runInstallSkills,
+		RunE:  runInstall,
 	}
-
-	return cmd
 }
 
-func runInstallSkills(cmd *cobra.Command, args []string) error {
+func runInstall(cmd *cobra.Command, args []string) error {
 	client := newSkillsFetcher()
 
 	manifestData, err := client.FetchManifest()

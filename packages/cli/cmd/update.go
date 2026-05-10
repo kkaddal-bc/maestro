@@ -30,11 +30,11 @@ func newUpdateCommand() *cobra.Command {
 		Use:   "update",
 		Short: "Update installed skills to latest versions",
 		Args:  cobra.NoArgs,
-		RunE:  runUpdateSkills,
+		RunE:  runUpdate,
 	}
 }
 
-func runUpdateSkills(cmd *cobra.Command, _ []string) error {
+func runUpdate(cmd *cobra.Command, _ []string) error {
 	client := newUpdateSkillsFetcher()
 
 	skillsManifest, err := client.FetchManifest()

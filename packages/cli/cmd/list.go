@@ -17,13 +17,13 @@ func newListCommand() *cobra.Command {
 		Use:   "list",
 		Short: "List maestro skills",
 		Args:  cobra.NoArgs,
-		RunE:  runListSkills,
+		RunE:  runList,
 	}
 
 	return cmd
 }
 
-func runListSkills(cmd *cobra.Command, _ []string) error {
+func runList(cmd *cobra.Command, _ []string) error {
 	fetcher := newSkillsFetcher()
 
 	manifestData, err := fetcher.FetchManifest()

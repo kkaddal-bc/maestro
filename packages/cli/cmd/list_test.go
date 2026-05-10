@@ -11,7 +11,7 @@ import (
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/manifest"
 )
 
-func TestListSkillsCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
+func TestListCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
@@ -73,7 +73,7 @@ func TestListSkillsCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
 	}
 }
 
-func TestListSkillsCommandSucceedsWhenNothingIsInstalled(t *testing.T) {
+func TestListCommandSucceedsWhenNothingIsInstalled(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
