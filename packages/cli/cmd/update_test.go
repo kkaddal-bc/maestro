@@ -16,8 +16,8 @@ import (
 type countingUpdateFetcher struct {
 	manifest      *manifest.Manifest
 	archive       []byte
-	manifestCalls  int
-	archiveCalls   int
+	manifestCalls int
+	archiveCalls  int
 }
 
 func (f *countingUpdateFetcher) FetchManifest() (*manifest.Manifest, error) {
@@ -53,7 +53,7 @@ func TestUpdateSkillsCommandUpdatesInstalledSkillsAndFetchesFreshManifestEachRun
 		},
 		archive: gzipUpdateArchive(t, map[string]string{
 			"maestro-snap/SKILL.md": "new snap",
-			"other-skill/SKILL.md":   "new other",
+			"other-skill/SKILL.md":  "new other",
 		}),
 	}
 
@@ -94,6 +94,119 @@ func TestUpdateSkillsCommandUpdatesInstalledSkillsAndFetchesFreshManifestEachRun
 	}
 	if fetcher.archiveCalls != 2 {
 		t.Fatalf("archiveCalls = %d, want 2", fetcher.archiveCalls)
+	}
+}
+
+func TestUpdateCommandWithSkillFlagUpdatesOnlyRequestedSkill(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+		t.Fatalf("mkdir .claude: %v", err)
+	}
+
+	maestroTarget := filepath.Join(home, ".maestro", "skills")
+	claudeTarget := filepath.Join(home, ".claude", "skills")
+	mustWriteUpdateFile(t, filepath.Join(maestroTarget, "maestro-snap", "SKILL.md"), "old snap")
+	mustWriteUpdateFile(t, filepath.Join(maestroTarget, "other-skill", "SKILL.md"), "old other")
+	mustWriteUpdateFile(t, filepath.Join(claudeTarget, "maestro-snap", "SKILL.md"), "old snap")
+	mustWriteUpdateFile(t, filepath.Join(claudeTarget, "other-skill", "SKILL.md"), "old other")
+
+	fetcher := &countingUpdateFetcher{
+		manifest: &manifest.Manifest{
+			Version: "v1.2.3",
+			Skills: []manifest.SkillEntry{
+				{Name: "maestro-snap", Description: "Capture"},
+				{Name: "other-skill", Description: "Other"},
+			},
+		},
+		archive: gzipUpdateArchive(t, map[string]string{
+			"maestro-snap/SKILL.md": "new snap",
+			"other-skill/SKILL.md":  "new other",
+		}),
+	}
+
+	oldFetcher := newUpdateSkillsFetcher
+	t.Cleanup(func() {
+		newUpdateSkillsFetcher = oldFetcher
+	})
+	newUpdateSkillsFetcher = func() updateSkillsFetcher {
+		return fetcher
+	}
+
+	cmd := newUpdateCommand()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--skill", "maestro-snap"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	assertUpdateFileContents(t, filepath.Join(maestroTarget, "maestro-snap", "SKILL.md"), "new snap")
+	assertUpdateFileContents(t, filepath.Join(claudeTarget, "maestro-snap", "SKILL.md"), "new snap")
+	assertUpdateFileContents(t, filepath.Join(maestroTarget, "other-skill", "SKILL.md"), "old other")
+	assertUpdateFileContents(t, filepath.Join(claudeTarget, "other-skill", "SKILL.md"), "old other")
+	if strings.Contains(stdout.String(), "other-skill") {
+		t.Fatalf("output unexpectedly mentions other-skill:\n%s", stdout.String())
+	}
+}
+
+func TestUpdateCommandRejectsUnknownOrUninstalledSkill(t *testing.T) {
+	tests := []struct {
+		name            string
+		skill           string
+		prepare         func(t *testing.T, home string)
+		wantErrContains string
+	}{
+		{
+			name:            "unknown skill",
+			skill:           "unknown",
+			wantErrContains: `unknown skill "unknown"`,
+		},
+		{
+			name:            "uninstalled skill",
+			skill:           "maestro-snap",
+			wantErrContains: `skill "maestro-snap" is not installed on any active target`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("HOME", home)
+			if tt.prepare != nil {
+				tt.prepare(t, home)
+			}
+
+			oldFetcher := newUpdateSkillsFetcher
+			t.Cleanup(func() {
+				newUpdateSkillsFetcher = oldFetcher
+			})
+			newUpdateSkillsFetcher = func() updateSkillsFetcher {
+				return &countingUpdateFetcher{
+					manifest: &manifest.Manifest{
+						Version: "v1.2.3",
+						Skills: []manifest.SkillEntry{
+							{Name: "maestro-snap", Description: "Capture"},
+						},
+					},
+				}
+			}
+
+			cmd := newUpdateCommand()
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+			cmd.SetArgs([]string{"--skill", tt.skill})
+
+			err := cmd.Execute()
+			if err == nil {
+				t.Fatal("Execute() error = nil, want error")
+			}
+			if !strings.Contains(err.Error(), tt.wantErrContains) {
+				t.Fatalf("Execute() error = %v, want substring %q", err, tt.wantErrContains)
+			}
+		})
 	}
 }
 

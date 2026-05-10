@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/fetcher"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/installer"
@@ -26,20 +27,27 @@ var (
 )
 
 func newUpdateCommand() *cobra.Command {
-	cmd := newNotImplementedCommand("update", "Update installed skills to latest versions")
-
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "Update installed skills to latest versions",
+		Args:  cobra.NoArgs,
+		RunE:  runUpdateSkills,
+	}
+	addUpdateSkillFlag(cmd)
 	cmd.AddCommand(newUpdateSkillsCommand())
 
 	return cmd
 }
 
 func newUpdateSkillsCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "skills",
 		Short: "Update maestro skills",
 		Args:  cobra.NoArgs,
 		RunE:  runUpdateSkills,
 	}
+	addUpdateSkillFlag(cmd)
+	return cmd
 }
 
 func runUpdateSkills(cmd *cobra.Command, _ []string) error {
@@ -51,7 +59,10 @@ func runUpdateSkills(cmd *cobra.Command, _ []string) error {
 	}
 
 	activeTargets := detectInstallTargets()
-	selected := installedSkills(skillsManifest, activeTargets)
+	selected, err := selectedUpdateSkills(cmd, skillsManifest, activeTargets)
+	if err != nil {
+		return err
+	}
 	if len(selected) == 0 {
 		printUpToDateSummary(cmd.OutOrStdout())
 		return nil
@@ -85,6 +96,25 @@ func runUpdateSkills(cmd *cobra.Command, _ []string) error {
 
 	printUpdateSummary(cmd.OutOrStdout(), home, result)
 	return nil
+}
+
+func selectedUpdateSkills(cmd *cobra.Command, manifestData *manifest.Manifest, installTargets []targets.Target) ([]string, error) {
+	requested, err := cmd.Flags().GetString("skill")
+	if err != nil {
+		return nil, err
+	}
+	requested = strings.TrimSpace(requested)
+	if requested == "" {
+		return installedSkills(manifestData, installTargets), nil
+	}
+
+	if !manifestHasSkill(manifestData, requested) {
+		return nil, fmt.Errorf("unknown skill %q", requested)
+	}
+	if !skillInstalledOnAnyTarget(installTargets, requested) {
+		return nil, fmt.Errorf("skill %q is not installed on any active target", requested)
+	}
+	return []string{requested}, nil
 }
 
 func installedSkills(manifestData *manifest.Manifest, installTargets []targets.Target) []string {
@@ -129,4 +159,8 @@ func printUpdateSummary(out io.Writer, home string, result installer.UpdateResul
 
 func printUpToDateSummary(out io.Writer) {
 	fmt.Fprintln(out, "skills are already up to date")
+}
+
+func addUpdateSkillFlag(cmd *cobra.Command) {
+	cmd.Flags().String("skill", "", "Update a single skill by name")
 }
