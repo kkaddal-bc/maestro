@@ -28,7 +28,7 @@ func (f fakeSkillsFetcher) FetchSkillsArchive(version string) (io.ReadCloser, er
 	return io.NopCloser(bytes.NewReader(f.archive)), nil
 }
 
-func TestInstallSkillsCommandInstallsSelectedSkillAndPrintsSummary(t *testing.T) {
+func TestInstallCommandInstallsSelectedSkillAndPrintsSummary(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
@@ -74,7 +74,7 @@ func TestInstallSkillsCommandInstallsSelectedSkillAndPrintsSummary(t *testing.T)
 		return result, nil
 	}
 
-	cmd := newInstallSkillsCommand()
+	cmd := newInstallCommand()
 	var stdout bytes.Buffer
 	cmd.SetOut(&stdout)
 	cmd.SetErr(io.Discard)
@@ -100,7 +100,58 @@ func TestInstallSkillsCommandInstallsSelectedSkillAndPrintsSummary(t *testing.T)
 	}
 }
 
-func TestInstallSkillsCommandRejectsUnknownSkill(t *testing.T) {
+func TestInstallCommandInstallsAllSkillsByDefault(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+		t.Fatalf("mkdir .claude: %v", err)
+	}
+
+	oldFetcher := newSkillsFetcher
+	oldTargets := detectInstallTargets
+	oldInstaller := runInstaller
+	t.Cleanup(func() {
+		newSkillsFetcher = oldFetcher
+		detectInstallTargets = oldTargets
+		runInstaller = oldInstaller
+	})
+
+	newSkillsFetcher = func() skillsFetcher {
+		return fakeSkillsFetcher{
+			manifest: &manifest.Manifest{
+				Version: "v1.2.3",
+				Skills: []manifest.SkillEntry{
+					{Name: "maestro-snap", Description: "Capture"},
+					{Name: "other-skill", Description: "Other"},
+				},
+			},
+			archive: gzipArchive(t),
+		}
+	}
+
+	var gotSkills []string
+	runInstaller = func(skillNames []string, archive io.Reader, installTargets []targets.Target) (installer.Result, error) {
+		gotSkills = append([]string(nil), skillNames...)
+		if _, err := io.ReadAll(archive); err != nil {
+			t.Fatalf("ReadAll archive: %v", err)
+		}
+		return installer.Result{}, nil
+	}
+
+	cmd := newInstallCommand()
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if len(gotSkills) != 2 || gotSkills[0] != "maestro-snap" || gotSkills[1] != "other-skill" {
+		t.Fatalf("selected skills = %#v", gotSkills)
+	}
+}
+
+func TestInstallCommandRejectsUnknownSkill(t *testing.T) {
 	oldFetcher := newSkillsFetcher
 	t.Cleanup(func() {
 		newSkillsFetcher = oldFetcher
@@ -115,7 +166,7 @@ func TestInstallSkillsCommandRejectsUnknownSkill(t *testing.T) {
 		}
 	}
 
-	cmd := newInstallSkillsCommand()
+	cmd := newInstallCommand()
 	cmd.SetArgs([]string{"unknown"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)

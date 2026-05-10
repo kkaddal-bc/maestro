@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -30,25 +29,15 @@ var (
 )
 
 func newInstallCommand() *cobra.Command {
-	cmd := newNotImplementedCommand("install", "Install skills into configured targets")
-
-	cmd.AddCommand(newInstallSkillsCommand())
-
-	return cmd
-}
-
-func newInstallSkillsCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "skills [skill-name]",
+	return &cobra.Command{
+		Use:   "install [skill-name]",
 		Short: "Install maestro skills",
 		Args:  cobra.MaximumNArgs(1),
-		RunE:  runInstallSkills,
+		RunE:  runInstall,
 	}
-
-	return cmd
 }
 
-func runInstallSkills(cmd *cobra.Command, args []string) error {
+func runInstall(cmd *cobra.Command, args []string) error {
 	client := newSkillsFetcher()
 
 	manifestData, err := client.FetchManifest()
@@ -98,7 +87,7 @@ func selectSkills(manifestData *manifest.Manifest, args []string) ([]string, err
 	}
 
 	if len(manifestData.Skills) == 0 {
-		return nil, errors.New("manifest contains no skills")
+		return nil, fmt.Errorf("manifest contains no skills")
 	}
 
 	skills := make([]string, 0, len(manifestData.Skills))

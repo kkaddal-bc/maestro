@@ -16,13 +16,13 @@ brew install kkaddal-bc/maestro/maestro
 maestro --help
 
 # Install skills into your agent targets
-maestro install skills
+maestro install
 
 # List installed skills and their status
-maestro list skills
+maestro list
 
 # Update installed skills to latest
-maestro update skills
+maestro update
 ```
 
 ## Upgrade

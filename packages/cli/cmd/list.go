@@ -13,25 +13,17 @@ import (
 )
 
 func newListCommand() *cobra.Command {
-	cmd := newNotImplementedCommand("list", "List skills and their installation status")
-
-	cmd.AddCommand(newListSkillsCommand())
-
-	return cmd
-}
-
-func newListSkillsCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "skills",
+		Use:   "list",
 		Short: "List maestro skills",
 		Args:  cobra.NoArgs,
-		RunE:  runListSkills,
+		RunE:  runList,
 	}
 
 	return cmd
 }
 
-func runListSkills(cmd *cobra.Command, _ []string) error {
+func runList(cmd *cobra.Command, _ []string) error {
 	fetcher := newSkillsFetcher()
 
 	manifestData, err := fetcher.FetchManifest()

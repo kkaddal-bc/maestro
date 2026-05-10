@@ -23,7 +23,7 @@ func executeCommand(t *testing.T, args []string) string {
 	return stdout.String()
 }
 
-func TestRootHelpShowsVerbFirstSubcommands(t *testing.T) {
+func TestRootHelpShowsTopLevelCommands(t *testing.T) {
 	out := executeCommand(t, []string{"--help"})
 	for _, want := range []string{"install", "list", "update"} {
 		if !strings.Contains(out, want) {
@@ -32,26 +32,26 @@ func TestRootHelpShowsVerbFirstSubcommands(t *testing.T) {
 	}
 }
 
-func TestSkillsHelpShowsExpectedUsage(t *testing.T) {
+func TestLeafHelpShowsExpectedUsage(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
 		want string
 	}{
 		{
-			name: "install skills",
-			args: []string{"install", "skills", "--help"},
-			want: "skills [skill-name]",
+			name: "install",
+			args: []string{"install", "--help"},
+			want: "install [skill-name]",
 		},
 		{
-			name: "list skills",
-			args: []string{"list", "skills", "--help"},
-			want: "maestro list skills",
+			name: "list",
+			args: []string{"list", "--help"},
+			want: "List maestro skills",
 		},
 		{
-			name: "update skills",
-			args: []string{"update", "skills", "--help"},
-			want: "maestro update skills",
+			name: "update",
+			args: []string{"update", "--help"},
+			want: "Update installed skills to latest versions",
 		},
 	}
 
@@ -65,19 +65,14 @@ func TestSkillsHelpShowsExpectedUsage(t *testing.T) {
 	}
 }
 
-func TestCommandsWithoutArgsPrintNotImplemented(t *testing.T) {
-	tests := [][]string{
-		{},
-		{"install"},
-		{"list"},
-		{"update"},
+func TestRootWithoutArgsShowsHelp(t *testing.T) {
+	out := executeCommand(t, nil)
+	for _, want := range []string{"Usage:", "install", "list", "update"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("root output missing %q:\n%s", want, out)
+		}
 	}
-
-	for _, args := range tests {
-		t.Run(strings.Join(args, " "), func(t *testing.T) {
-			if got := strings.TrimSpace(executeCommand(t, args)); got != "not implemented" {
-				t.Fatalf("unexpected output %q", got)
-			}
-		})
+	if strings.Contains(out, "not implemented") {
+		t.Fatalf("root output still contains not implemented:\n%s", out)
 	}
 }
