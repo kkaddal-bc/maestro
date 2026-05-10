@@ -119,9 +119,11 @@ func (row Row) cells() []string {
 }
 
 func (row Row) styles(installedStyle lipgloss.Style) []lipgloss.Style {
-	styles := make([]lipgloss.Style, 0, 3)
-	styles = append(styles, lipgloss.NewStyle(), lipgloss.NewStyle(), statusStyle(row.Status, installedStyle))
-	return styles
+	return []lipgloss.Style{
+		lipgloss.NewStyle(),
+		lipgloss.NewStyle(),
+		statusStyle(row.Status, installedStyle),
+	}
 }
 
 func statusStyle(status string, installedStyle lipgloss.Style) lipgloss.Style {

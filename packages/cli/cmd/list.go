@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"io"
-	"os"
-	"path/filepath"
 
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/listtable"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/manifest"
@@ -53,11 +51,8 @@ func buildListRows(manifestData *manifest.Manifest, installTargets []targets.Tar
 	rows := make([]listtable.Row, 0, len(manifestData.Skills))
 	for _, skill := range manifestData.Skills {
 		status := "not installed"
-		for _, target := range installTargets {
-			if skillInstalledOnTarget(target.Path, skill.Name) {
-				status = "installed"
-				break
-			}
+		if skillInstalledOnTargets(installTargets, skill.Name) {
+			status = "installed"
 		}
 		rows = append(rows, listtable.Row{
 			Name:        skill.Name,
@@ -67,12 +62,4 @@ func buildListRows(manifestData *manifest.Manifest, installTargets []targets.Tar
 	}
 
 	return rows
-}
-
-func skillInstalledOnTarget(targetPath, skillName string) bool {
-	info, err := os.Stat(filepath.Join(targetPath, skillName))
-	if err != nil || !info.IsDir() {
-		return false
-	}
-	return true
 }
