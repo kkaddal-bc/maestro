@@ -2,6 +2,8 @@
 
 Exact markdown structure for the two generated files. Fill in extracted data; omit entire sections if none exist, such as no gRPC or no WebSocket support.
 
+For single-service repos, write these files under `.maestro/maestro-interface/`. For monorepos, write them under `.maestro/<service-name>/maestro-interface/`.
+
 Use `🔒 (inferred)` whenever auth cannot be determined with confidence from explicit configuration.
 
 ---
