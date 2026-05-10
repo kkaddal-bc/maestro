@@ -14,7 +14,7 @@ Generate living markdown files that capture the service surface area, plus a min
 
 ## Workflow
 
-### Step 1 — Orient
+### Step 1 - Orient
 
 Read the project manifest first to identify the stack and runtime shape. Run in parallel:
 
@@ -54,7 +54,12 @@ Read every discovered file. Use the detected stack from Step 1 to understand whe
 
 - Prefer direct contract artifacts over inferred endpoints when they exist.
 - Read proto files before writing output so service and message definitions are authoritative.
-- If no direct contract artifact exists, read the code that defines routes, handlers, models, and migrations.
+- If no direct contract artifact exists, read the code that defines routes, handlers, models, and migrations:
+  - Open the server bootstrap, router setup, controllers, handlers, and adjacent tests.
+  - Follow imports and registration calls to find the code paths that define routes or RPCs.
+  - Infer path params, query params, request bodies, response bodies, and auth from the code and tests.
+  - Find migration directories by name heuristics: `migrations/`, `db/migrate/`, `database/migrations/`, `schema/migrations/`, `resources/db/migration/`, and similar. Read raw SQL migration files in version order regardless of migration tool.
+  - Cross-reference ORM or schema model files for relationships and type information that SQL does not make explicit.
 
 ### Step 4 — Write Output
 
@@ -68,12 +73,11 @@ Rules:
 - Regenerate fully each run; never append to existing files.
 - Every section has a slug anchor for deep-linking.
 - Include `file:line` source references for traceability.
-- Mark auth on every HTTP endpoint and websocket entry with the clearest available signal.
-- Use `🔒 (inferred)` when auth cannot be determined with certainty from explicit configuration.
+- Mark auth on every HTTP endpoint and websocket entry with the clearest available signal: `public`, `🔒 JWT`, `🔒 OAuth2`, `🔒 API Key`, `🔒 Role: ADMIN`, or `🔒 (inferred)` when certainty is low.
 - If a DTO cannot be resolved, write `(type unresolved)` rather than omitting the row.
 - Sort HTTP endpoints by path then method. Sort entities alphabetically.
 
-### Step 5 — Write AGENTS.md
+### Step 5 - Write AGENTS.md
 
 Create `AGENTS.md` at the repository root if it does not already exist. If it already exists, leave it untouched.
 
@@ -90,7 +94,7 @@ Before scanning the repository for any assigned task, read the files in `.maestr
 These files map the full surface of the service and include source file references. Use them to orient before exploring the codebase.
 ```
 
-### Step 6 — Report
+### Step 6 - Report
 
 Print a brief summary:
 - Files written and line counts
