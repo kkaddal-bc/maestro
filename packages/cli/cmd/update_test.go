@@ -73,13 +73,19 @@ func TestUpdateCommandUpdatesInstalledSkillsAndFetchesFreshManifestEachRun(t *te
 	stubUpdateSkillsFetcher(t, fetcher)
 
 	firstOutput := executeTopLevelUpdateCommand(t)
+	if !strings.Contains(firstOutput, "\x1b[") {
+		t.Fatalf("first output missing ANSI styling:\n%s", firstOutput)
+	}
+	firstOutput = stripANSI(firstOutput)
 	for _, want := range []string{
-		"✓ updated maestro-snap → ~/.maestro/skills/",
-		"✓ updated maestro-snap → ~/.claude/skills/",
+		"✓ Updated maestro-snap",
 	} {
 		if !strings.Contains(firstOutput, want) {
 			t.Fatalf("first output missing %q:\n%s", want, firstOutput)
 		}
+	}
+	if strings.Contains(firstOutput, "→") {
+		t.Fatalf("first output unexpectedly contains target paths:\n%s", firstOutput)
 	}
 	if strings.Contains(firstOutput, "up to date") {
 		t.Fatalf("first output reported up to date unexpectedly:\n%s", firstOutput)
@@ -92,7 +98,11 @@ func TestUpdateCommandUpdatesInstalledSkillsAndFetchesFreshManifestEachRun(t *te
 	}
 
 	secondOutput := executeTopLevelUpdateCommand(t)
-	if !strings.Contains(secondOutput, "skills are already up to date") {
+	if !strings.Contains(secondOutput, "\x1b[") {
+		t.Fatalf("second output missing ANSI styling:\n%s", secondOutput)
+	}
+	secondOutput = stripANSI(secondOutput)
+	if !strings.Contains(secondOutput, "- all skills are up to date") {
 		t.Fatalf("second output missing up-to-date message:\n%s", secondOutput)
 	}
 
@@ -154,12 +164,13 @@ func TestUpdateCommandWithSkillFlagUpdatesOnlyRequestedSkill(t *testing.T) {
 				t.Fatalf("Execute() error = %v", err)
 			}
 
+			out := stripANSI(stdout.String())
 			assertUpdateFileContents(t, filepath.Join(maestroTarget, "maestro-snap", "SKILL.md"), "new snap")
 			assertUpdateFileContents(t, filepath.Join(claudeTarget, "maestro-snap", "SKILL.md"), "new snap")
 			assertUpdateFileContents(t, filepath.Join(maestroTarget, "other-skill", "SKILL.md"), "old other")
 			assertUpdateFileContents(t, filepath.Join(claudeTarget, "other-skill", "SKILL.md"), "old other")
-			if strings.Contains(stdout.String(), "other-skill") {
-				t.Fatalf("output unexpectedly mentions other-skill:\n%s", stdout.String())
+			if strings.Contains(out, "other-skill") {
+				t.Fatalf("output unexpectedly mentions other-skill:\n%s", out)
 			}
 		})
 	}

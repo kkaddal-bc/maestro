@@ -11,6 +11,7 @@ import (
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/fetcher"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/installer"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/manifest"
+	"github.com/kkaddal-bc/maestro/packages/cli/internal/style"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/targets"
 	"github.com/spf13/cobra"
 )
@@ -91,12 +92,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-
-	printUpdateSummary(cmd.OutOrStdout(), home, result)
+	printUpdateSummary(cmd.OutOrStdout(), result)
 	return nil
 }
 
@@ -150,24 +146,14 @@ func skillInstalled(targetRoot, skillName string) bool {
 	return err == nil && info.IsDir()
 }
 
-func printUpdateSummary(out io.Writer, home string, result installer.UpdateResult) {
-	updatedByTarget := map[string][]string{}
+func printUpdateSummary(out io.Writer, result installer.UpdateResult) {
 	for _, item := range result.Updated {
-		updatedByTarget[item.Target] = append(updatedByTarget[item.Target], item.Skill)
-	}
-
-	knownTargets := targets.Known(home)
-	for _, target := range knownTargets {
-		if skills, ok := updatedByTarget[target.Path]; ok {
-			for _, skill := range skills {
-				fmt.Fprintf(out, "✓ updated %s → %s\n", skill, displayTargetPath(home, target.Path))
-			}
-		}
+		fmt.Fprintln(out, style.Success.Render(fmt.Sprintf("✓ Updated %s", item.Skill)))
 	}
 }
 
 func printUpToDateSummary(out io.Writer) {
-	fmt.Fprintln(out, "skills are already up to date")
+	fmt.Fprintln(out, style.Secondary.Render("- all skills are up to date"))
 }
 
 func addUpdateSkillFlag(cmd *cobra.Command) {

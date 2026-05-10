@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"strings"
+	"sort"
 
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/fetcher"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/installer"
@@ -170,7 +169,7 @@ func excludeInstalledSkills(out io.Writer, requested []string, installTargets []
 	selected := make([]string, 0, len(requested))
 	for _, skill := range requested {
 		if skillInstalledOnTargets(installTargets, skill) {
-			fmt.Fprintf(out, "- skipped %s (already installed)\n", skill)
+			fmt.Fprintln(out, style.Secondary.Render(fmt.Sprintf("- %s already installed", skill)))
 			continue
 		}
 		selected = append(selected, skill)
@@ -189,30 +188,37 @@ func printInstallSummary(out io.Writer, home string, activeTargets []targets.Tar
 		installedByTarget[item.Target] = append(installedByTarget[item.Target], item.Skill)
 	}
 
-	for _, target := range targets.Known(home) {
+	installedSkills := uniqueSkills(result.Installed)
+	hasInactiveTargets := false
+	knownTargets := targets.Known(home)
+
+	for _, target := range knownTargets {
 		if _, ok := active[target.Path]; ok {
 			for _, skill := range installedByTarget[target.Path] {
-				fmt.Fprintf(out, "%s %s → %s\n",
-					style.Accent.Render("✓ installed"),
-					skill,
-					displayTargetPath(home, target.Path),
-				)
+				fmt.Fprintln(out, style.Success.Render(fmt.Sprintf("✓ Installed %s", skill)))
 			}
 			continue
 		}
+		hasInactiveTargets = true
+	}
 
-		fmt.Fprintf(out, "- skipped %s (not found)\n", displayTargetPath(home, target.Path))
+	if hasInactiveTargets {
+		for _, skill := range installedSkills {
+			fmt.Fprintln(out, style.Secondary.Render(fmt.Sprintf("- %s not found", skill)))
+		}
 	}
 }
 
-func displayTargetPath(home, targetPath string) string {
-	rel, err := filepath.Rel(home, targetPath)
-	if err != nil || strings.HasPrefix(rel, "..") {
-		return targetPath
+func uniqueSkills(installed []installer.Installation) []string {
+	seen := map[string]struct{}{}
+	skills := make([]string, 0, len(installed))
+	for _, item := range installed {
+		if _, ok := seen[item.Skill]; ok {
+			continue
+		}
+		seen[item.Skill] = struct{}{}
+		skills = append(skills, item.Skill)
 	}
-	rel = filepath.ToSlash(rel)
-	if rel == "." {
-		return "~/"
-	}
-	return "~/" + rel + "/"
+	sort.Strings(skills)
+	return skills
 }
