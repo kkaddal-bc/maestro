@@ -1,8 +1,0 @@
-{
-  "name": "workspace",
-  "private": true,
-  "scripts": {
-    "typecheck": "node scripts/validate-homebrew.mjs --typecheck",
-    "test": "node scripts/validate-homebrew.mjs"
-  }
-}
