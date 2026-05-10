@@ -2,6 +2,7 @@ package installer
 
 import (
 	"archive/tar"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -15,7 +16,7 @@ import (
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/targets"
 )
 
-var errMismatch = errors.New("mismatch")
+var errTreeMismatch = errors.New("tree mismatch")
 
 type Result struct {
 	Installed []Installation
@@ -232,15 +233,12 @@ func skillTreeMatches(skillRoot string, entries []archiveEntry) (bool, error) {
 			if _, ok := expectedDirs[rel]; ok {
 				return nil
 			}
-			if _, ok := expectedFiles[rel]; ok {
-				return fmt.Errorf("expected file but found directory %s", rel)
-			}
-			return fmt.Errorf("unexpected directory %s", rel)
+			return errTreeMismatch
 		}
 
 		entry, ok := expectedFiles[rel]
 		if !ok {
-			return fmt.Errorf("unexpected file %s", rel)
+			return errTreeMismatch
 		}
 		seenFiles[rel] = struct{}{}
 
@@ -248,8 +246,8 @@ func skillTreeMatches(skillRoot string, entries []archiveEntry) (bool, error) {
 		if err != nil {
 			return err
 		}
-		if string(data) != string(entry.data) {
-			return errMismatch
+		if !bytes.Equal(data, entry.data) {
+			return errTreeMismatch
 		}
 
 		info, err := d.Info()
@@ -257,13 +255,13 @@ func skillTreeMatches(skillRoot string, entries []archiveEntry) (bool, error) {
 			return err
 		}
 		if info.Mode().Perm() != entry.mode.Perm() {
-			return errMismatch
+			return errTreeMismatch
 		}
 		return nil
 	})
 
 	if walkErr != nil {
-		if errors.Is(walkErr, errMismatch) {
+		if errors.Is(walkErr, errTreeMismatch) {
 			return false, nil
 		}
 		return false, walkErr
