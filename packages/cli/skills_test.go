@@ -18,6 +18,22 @@ func readSkillFile(t *testing.T, name string) string {
 	return string(data)
 }
 
+func requireContains(t *testing.T, fileName, content, want string) {
+	t.Helper()
+
+	if !strings.Contains(content, want) {
+		t.Fatalf("%s missing %q", fileName, want)
+	}
+}
+
+func requireNotContains(t *testing.T, fileName, content, forbidden string) {
+	t.Helper()
+
+	if strings.Contains(content, forbidden) {
+		t.Fatalf("%s contains forbidden substring %q", fileName, forbidden)
+	}
+}
+
 func TestMaestroSnapSkillDocsStayLanguageAgnostic(t *testing.T) {
 	skill := readSkillFile(t, "SKILL.md")
 	templates := readSkillFile(t, "OUTPUT-TEMPLATES.md")
@@ -25,19 +41,15 @@ func TestMaestroSnapSkillDocsStayLanguageAgnostic(t *testing.T) {
 
 	for _, want := range []string{
 		"manifest and lockfiles first",
-		"LLM-native code reading",
+		"read the code directly",
 		"proto files exist",
 		"OpenAPI or Swagger files exist",
 		"migration directories by name heuristics",
 	} {
-		if !strings.Contains(skill, want) {
-			t.Fatalf("SKILL.md missing %q", want)
-		}
+		requireContains(t, "SKILL.md", skill, want)
 	}
 
-	if !strings.Contains(templates, "🔒 (inferred)") {
-		t.Fatalf("OUTPUT-TEMPLATES.md missing inferred auth marker")
-	}
+	requireContains(t, "OUTPUT-TEMPLATES.md", templates, "🔒 (inferred)")
 
 	for _, content := range []struct {
 		name string
@@ -51,9 +63,7 @@ func TestMaestroSnapSkillDocsStayLanguageAgnostic(t *testing.T) {
 			"--include=\"*.kt\"",
 			"Kotlin",
 		} {
-			if strings.Contains(content.text, forbidden) {
-				t.Fatalf("%s contains forbidden substring %q", content.name, forbidden)
-			}
+			requireNotContains(t, content.name, content.text, forbidden)
 		}
 	}
 }
