@@ -13,6 +13,7 @@ import (
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/installer"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/installpicker"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/manifest"
+	"github.com/kkaddal-bc/maestro/packages/cli/internal/style"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/targets"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -191,7 +192,11 @@ func printInstallSummary(out io.Writer, home string, activeTargets []targets.Tar
 	for _, target := range targets.Known(home) {
 		if _, ok := active[target.Path]; ok {
 			for _, skill := range installedByTarget[target.Path] {
-				fmt.Fprintf(out, "✓ installed %s → %s\n", skill, displayTargetPath(home, target.Path))
+				fmt.Fprintf(out, "%s %s → %s\n",
+					style.Accent.Render("✓ installed"),
+					skill,
+					displayTargetPath(home, target.Path),
+				)
 			}
 			continue
 		}

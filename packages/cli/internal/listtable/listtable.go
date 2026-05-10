@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/kkaddal-bc/maestro/packages/cli/internal/style"
 )
 
 const defaultDescriptionLimit = 60
@@ -14,7 +15,7 @@ const defaultDescriptionLimit = 60
 type Row struct {
 	Name        string
 	Description string
-	Statuses    []string
+	Status      string
 }
 
 type Renderer struct {
@@ -34,14 +35,12 @@ func (r Renderer) Render(w io.Writer, headers []string, rows []Row) error {
 	widths := columnWidths(headers, normalizedRows)
 	useStyles := isTerminalWriter(w)
 	headerStyle := lipgloss.NewStyle().Bold(true)
-	descriptionStyle := lipgloss.NewStyle().Faint(true)
-	installedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
-	missingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	installedStyle := style.Accent
 
 	fmt.Fprintln(w, renderRow(headers, widths, headerStyle, nil, useStyles))
 	for _, row := range normalizedRows {
 		cells := row.cells()
-		styles := row.styles(descriptionStyle, installedStyle, missingStyle)
+		styles := row.styles(installedStyle)
 		fmt.Fprintln(w, renderRow(cells, widths, lipgloss.Style{}, styles, useStyles))
 	}
 
@@ -54,7 +53,7 @@ func (r Renderer) normalizeRows(rows []Row) []Row {
 		normalized[i] = Row{
 			Name:        row.Name,
 			Description: r.truncateDescription(row.Description),
-			Statuses:    append([]string(nil), row.Statuses...),
+			Status:      row.Status,
 		}
 	}
 
@@ -116,28 +115,20 @@ func renderRow(values []string, widths []int, rowStyle lipgloss.Style, cellStyle
 }
 
 func (row Row) cells() []string {
-	values := make([]string, 0, 2+len(row.Statuses))
-	values = append(values, row.Name, row.Description)
-	values = append(values, row.Statuses...)
-	return values
+	return []string{row.Name, row.Description, row.Status}
 }
 
-func (row Row) styles(descriptionStyle, installedStyle, missingStyle lipgloss.Style) []lipgloss.Style {
-	styles := make([]lipgloss.Style, 0, 2+len(row.Statuses))
-	styles = append(styles, lipgloss.NewStyle(), descriptionStyle)
-	for _, status := range row.Statuses {
-		styles = append(styles, styleForStatus(status, installedStyle, missingStyle))
-	}
+func (row Row) styles(installedStyle lipgloss.Style) []lipgloss.Style {
+	styles := make([]lipgloss.Style, 0, 3)
+	styles = append(styles, lipgloss.NewStyle(), lipgloss.NewStyle(), statusStyle(row.Status, installedStyle))
 	return styles
 }
 
-func styleForStatus(status string, installedStyle, missingStyle lipgloss.Style) lipgloss.Style {
-	switch status {
-	case "installed":
+func statusStyle(status string, installedStyle lipgloss.Style) lipgloss.Style {
+	if status == "installed" {
 		return installedStyle
-	default:
-		return missingStyle
 	}
+	return lipgloss.NewStyle()
 }
 
 func padRight(value string, width int) string {
