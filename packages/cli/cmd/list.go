@@ -13,7 +13,7 @@ import (
 )
 
 func newListCommand() *cobra.Command {
-	cmd := newNotImplementedCommand("list", "List related commands")
+	cmd := newNotImplementedCommand("list", "List skills and their installation status")
 
 	cmd.AddCommand(newListSkillsCommand())
 

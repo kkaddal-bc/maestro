@@ -26,7 +26,7 @@ var (
 )
 
 func newUpdateCommand() *cobra.Command {
-	cmd := newNotImplementedCommand("update", "Update related commands")
+	cmd := newNotImplementedCommand("update", "Update installed skills to latest versions")
 
 	cmd.AddCommand(newUpdateSkillsCommand())
 
