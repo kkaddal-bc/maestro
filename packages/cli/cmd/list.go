@@ -1,12 +1,11 @@
 package cmd
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/kkaddal-bc/maestro/packages/cli/internal/listtable"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/manifest"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/targets"
 	"github.com/spf13/cobra"
@@ -15,6 +14,17 @@ import (
 func newListCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
+		Short: "List skills and their installation status",
+		Args:  cobra.NoArgs,
+		RunE:  runList,
+	}
+	cmd.AddCommand(newListSkillsCommand())
+	return cmd
+}
+
+func newListSkillsCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "skills",
 		Short: "List maestro skills",
 		Args:  cobra.NoArgs,
 		RunE:  runList,
@@ -37,24 +47,30 @@ func runList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	printListSkills(cmd.OutOrStdout(), home, manifestData, installTargets)
-	return nil
+	return printListSkills(cmd.OutOrStdout(), home, manifestData, installTargets)
 }
 
-func printListSkills(out io.Writer, home string, manifestData *manifest.Manifest, installTargets []targets.Target) {
+func printListSkills(out io.Writer, home string, manifestData *manifest.Manifest, installTargets []targets.Target) error {
 	headers := []string{"SKILL", "DESCRIPTION"}
 	for _, target := range installTargets {
 		headers = append(headers, displayTargetPath(home, target.Path))
 	}
-	fmt.Fprintln(out, strings.Join(headers, "\t"))
 
+	renderer := listtable.NewRenderer()
+	rows := make([]listtable.Row, 0, len(manifestData.Skills))
 	for _, skill := range manifestData.Skills {
-		row := []string{skill.Name, skill.Description}
+		statuses := make([]string, 0, len(installTargets))
 		for _, target := range installTargets {
-			row = append(row, skillStatus(target.Path, skill.Name))
+			statuses = append(statuses, skillStatus(target.Path, skill.Name))
 		}
-		fmt.Fprintln(out, strings.Join(row, "\t"))
+		rows = append(rows, listtable.Row{
+			Name:        skill.Name,
+			Description: skill.Description,
+			Statuses:    statuses,
+		})
 	}
+
+	return renderer.Render(out, headers, rows)
 }
 
 func skillStatus(targetPath, skillName string) string {

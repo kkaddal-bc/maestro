@@ -37,7 +37,7 @@ func TestListCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
 			manifest: &manifest.Manifest{
 				Version: "v1.2.3",
 				Skills: []manifest.SkillEntry{
-					{Name: "maestro-snap", Description: "Capture"},
+					{Name: "maestro-snap", Description: strings.Repeat("Capture all the things. ", 4)},
 					{Name: "other-skill", Description: "Other"},
 				},
 			},
@@ -63,10 +63,17 @@ func TestListCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
 		"other-skill",
 		"installed",
 		"not installed",
+		"…",
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output missing %q:\n%s", want, out)
 		}
+	}
+	if strings.Contains(out, "\x1b[") {
+		t.Fatalf("output unexpectedly contains ANSI escapes:\n%s", out)
+	}
+	if strings.Contains(out, "\t") {
+		t.Fatalf("output unexpectedly contains tabs:\n%s", out)
 	}
 	if strings.Contains(out, "~/.agents/skills/") {
 		t.Fatalf("output unexpectedly includes missing target:\n%s", out)

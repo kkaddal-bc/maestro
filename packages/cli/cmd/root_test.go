@@ -3,8 +3,13 @@ package cmd
 import (
 	"bytes"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/kkaddal-bc/maestro/packages/cli/internal/manifest"
+	"github.com/kkaddal-bc/maestro/packages/cli/internal/targets"
 )
 
 func executeCommand(t *testing.T, args []string) string {
@@ -74,5 +79,42 @@ func TestRootWithoutArgsShowsHelp(t *testing.T) {
 	}
 	if strings.Contains(out, "not implemented") {
 		t.Fatalf("root output still contains not implemented:\n%s", out)
+	}
+}
+
+func TestListCommandPrintsTableWithoutSubcommand(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+		t.Fatalf("mkdir .claude: %v", err)
+	}
+
+	oldFetcher := newSkillsFetcher
+	oldTargets := detectInstallTargets
+	t.Cleanup(func() {
+		newSkillsFetcher = oldFetcher
+		detectInstallTargets = oldTargets
+	})
+
+	newSkillsFetcher = func() skillsFetcher {
+		return fakeSkillsFetcher{
+			manifest: &manifest.Manifest{
+				Version: "v1.2.3",
+				Skills: []manifest.SkillEntry{
+					{Name: "maestro-snap", Description: "Capture"},
+				},
+			},
+		}
+	}
+	detectInstallTargets = func() []targets.Target {
+		return []targets.Target{{Path: filepath.Join(home, ".maestro", "skills"), Required: true}}
+	}
+
+	out := executeCommand(t, []string{"list"})
+	for _, want := range []string{"SKILL", "maestro-snap", "not installed"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("list output missing %q:\n%s", want, out)
+		}
 	}
 }
