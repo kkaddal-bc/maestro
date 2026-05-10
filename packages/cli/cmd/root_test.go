@@ -71,32 +71,10 @@ func TestCommandHelpShowsExpectedUsage(t *testing.T) {
 }
 
 func TestCommandsWithoutArgsPrintNotImplemented(t *testing.T) {
-	oldListFetcher := newSkillsFetcher
-	oldUpdateFetcher := newUpdateSkillsFetcher
-	oldTargets := detectInstallTargets
-	t.Cleanup(func() {
-		newSkillsFetcher = oldListFetcher
-		newUpdateSkillsFetcher = oldUpdateFetcher
-		detectInstallTargets = oldTargets
-	})
-
-	newSkillsFetcher = func() skillsFetcher {
-		return fakeSkillsFetcher{
-			manifest: &manifest.Manifest{
-				Version: "v1.2.3",
-				Skills:  []manifest.SkillEntry{},
-			},
-		}
-	}
-	newUpdateSkillsFetcher = func() updateSkillsFetcher {
-		return fakeUpdateSkillsFetcher{
-			manifest: &manifest.Manifest{
-				Version: "v1.2.3",
-				Skills:  []manifest.SkillEntry{},
-			},
-		}
-	}
-	detectInstallTargets = func() []targets.Target { return nil }
+	stubRootCommandFetchers(t, &manifest.Manifest{
+		Version: "v1.2.3",
+		Skills:  []manifest.SkillEntry{},
+	}, nil)
 
 	tests := [][]string{
 		{},
@@ -111,15 +89,40 @@ func TestCommandsWithoutArgsPrintNotImplemented(t *testing.T) {
 	}
 }
 
-type fakeUpdateSkillsFetcher struct {
+func stubRootCommandFetchers(t *testing.T, manifestData *manifest.Manifest, installTargets []targets.Target) {
+	t.Helper()
+
+	oldListFetcher := newSkillsFetcher
+	oldUpdateFetcher := newUpdateSkillsFetcher
+	oldTargets := detectInstallTargets
+	t.Cleanup(func() {
+		newSkillsFetcher = oldListFetcher
+		newUpdateSkillsFetcher = oldUpdateFetcher
+		detectInstallTargets = oldTargets
+	})
+
+	newSkillsFetcher = func() skillsFetcher {
+		return fakeSkillsFetcher{
+			manifest: manifestData,
+		}
+	}
+	newUpdateSkillsFetcher = func() updateSkillsFetcher {
+		return fakeRootUpdateSkillsFetcher{manifest: manifestData}
+	}
+	detectInstallTargets = func() []targets.Target {
+		return installTargets
+	}
+}
+
+type fakeRootUpdateSkillsFetcher struct {
 	manifest *manifest.Manifest
 }
 
-func (f fakeUpdateSkillsFetcher) FetchManifest() (*manifest.Manifest, error) {
+func (f fakeRootUpdateSkillsFetcher) FetchManifest() (*manifest.Manifest, error) {
 	return f.manifest, nil
 }
 
-func (f fakeUpdateSkillsFetcher) FetchSkillsArchive(string) (io.ReadCloser, error) {
+func (f fakeRootUpdateSkillsFetcher) FetchSkillsArchive(string) (io.ReadCloser, error) {
 	return nil, nil
 }
 
