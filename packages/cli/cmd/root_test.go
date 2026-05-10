@@ -72,7 +72,6 @@ func TestCommandsWithoutArgsPrintNotImplemented(t *testing.T) {
 		{"list"},
 		{"list", "skills"},
 		{"update"},
-		{"update", "skills"},
 	}
 
 	for _, args := range tests {

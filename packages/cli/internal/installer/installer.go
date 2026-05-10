@@ -18,6 +18,11 @@ type Result struct {
 	Installed []Installation
 }
 
+type UpdateResult struct {
+	Updated  []Installation
+	UpToDate bool
+}
+
 type Installation struct {
 	Skill  string
 	Target string
@@ -57,6 +62,57 @@ func Install(skillNames []string, archive io.Reader, installTargets []targets.Ta
 				return result, err
 			}
 			result.Installed = append(result.Installed, Installation{
+				Skill:  skill,
+				Target: target.Path,
+			})
+		}
+	}
+
+	return result, nil
+}
+
+func Update(skillNames []string, archive io.Reader, installTargets []targets.Target) (UpdateResult, error) {
+	bundles, err := readArchive(archive)
+	if err != nil {
+		return UpdateResult{}, err
+	}
+
+	selected := skillNames
+	if len(selected) == 0 {
+		selected = sortedKeys(bundles)
+	}
+
+	for _, name := range selected {
+		if _, ok := bundles[name]; !ok {
+			return UpdateResult{}, fmt.Errorf("unknown skill %q", name)
+		}
+	}
+
+	result := UpdateResult{UpToDate: true}
+	for _, target := range installTargets {
+		for _, skill := range selected {
+			skillRoot := filepath.Join(target.Path, skill)
+			exists, err := pathExists(skillRoot)
+			if err != nil {
+				return result, err
+			}
+			if !exists {
+				continue
+			}
+
+			matches, err := skillTreeMatches(skillRoot, bundles[skill])
+			if err != nil {
+				return result, err
+			}
+			if matches {
+				continue
+			}
+
+			if err := writeSkill(target.Path, skill, bundles[skill]); err != nil {
+				return result, err
+			}
+			result.UpToDate = false
+			result.Updated = append(result.Updated, Installation{
 				Skill:  skill,
 				Target: target.Path,
 			})
@@ -116,6 +172,9 @@ func readArchive(archive io.Reader) (map[string][]archiveEntry, error) {
 
 func writeSkill(targetRoot, skill string, entries []archiveEntry) error {
 	skillRoot := filepath.Join(targetRoot, skill)
+	if err := os.RemoveAll(skillRoot); err != nil {
+		return fmt.Errorf("clear target %s: %w", skillRoot, err)
+	}
 	if err := os.MkdirAll(skillRoot, 0o755); err != nil {
 		return fmt.Errorf("create target %s: %w", skillRoot, err)
 	}
@@ -141,6 +200,120 @@ func writeSkill(targetRoot, skill string, entries []archiveEntry) error {
 	}
 
 	return nil
+}
+
+func skillTreeMatches(skillRoot string, entries []archiveEntry) (bool, error) {
+	expectedFiles := map[string]archiveEntry{}
+	expectedDirs := map[string]struct{}{
+		".": {},
+	}
+
+	for _, entry := range entries {
+		cleanRel := filepath.Clean(filepath.FromSlash(entry.relPath))
+		if entry.relPath == "" || cleanRel == "." {
+			continue
+		}
+
+		parts := strings.Split(filepath.ToSlash(cleanRel), "/")
+		if len(parts) > 1 {
+			for i := 1; i < len(parts); i++ {
+				expectedDirs[filepath.Join(parts[:i]...)] = struct{}{}
+			}
+		}
+		if entry.isDir {
+			expectedDirs[cleanRel] = struct{}{}
+			continue
+		}
+		expectedFiles[cleanRel] = entry
+	}
+
+	seenFiles := map[string]struct{}{}
+	seenDirs := map[string]struct{}{
+		".": {},
+	}
+
+	walkErr := filepath.WalkDir(skillRoot, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		rel, err := filepath.Rel(skillRoot, path)
+		if err != nil {
+			return err
+		}
+		rel = filepath.Clean(rel)
+		if rel == "." {
+			return nil
+		}
+
+		if d.IsDir() {
+			seenDirs[rel] = struct{}{}
+			if _, ok := expectedDirs[rel]; ok {
+				return nil
+			}
+			if _, ok := expectedFiles[rel]; ok {
+				return fmt.Errorf("expected file but found directory %s", rel)
+			}
+			return fmt.Errorf("unexpected directory %s", rel)
+		}
+
+		entry, ok := expectedFiles[rel]
+		if !ok {
+			return fmt.Errorf("unexpected file %s", rel)
+		}
+		seenFiles[rel] = struct{}{}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if string(data) != string(entry.data) {
+			return fmt.Errorf("file %s does not match archive", rel)
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		if info.Mode().Perm() != entry.mode.Perm() {
+			return fmt.Errorf("file %s mode does not match archive", rel)
+		}
+		return nil
+	})
+
+	if walkErr != nil {
+		return false, walkErr
+	}
+
+	if len(seenFiles) != len(expectedFiles) {
+		return false, nil
+	}
+	for rel := range expectedFiles {
+		if _, ok := seenFiles[rel]; !ok {
+			return false, nil
+		}
+	}
+	if len(seenDirs) != len(expectedDirs) {
+		return false, nil
+	}
+	for rel := range expectedDirs {
+		if _, ok := seenDirs[rel]; !ok {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func pathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
 
 func sortedKeys(bundles map[string][]archiveEntry) []string {
