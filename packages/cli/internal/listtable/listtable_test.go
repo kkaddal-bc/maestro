@@ -10,16 +10,16 @@ func TestRenderProducesAlignedPlainTextAndTruncatesDescriptions(t *testing.T) {
 	var out bytes.Buffer
 
 	renderer := NewRenderer()
-	err := renderer.Render(&out, []string{"SKILL", "DESCRIPTION", "~/.maestro/skills/"}, []Row{
+	err := renderer.Render(&out, []string{"SKILL", "DESCRIPTION", "STATUS"}, []Row{
 		{
 			Name:        "maestro-snap",
 			Description: strings.Repeat("a", 80),
-			Statuses:    []string{"installed"},
+			Status:      "installed",
 		},
 		{
 			Name:        "other-skill",
 			Description: "Short description",
-			Statuses:    []string{"not installed"},
+			Status:      "not installed",
 		},
 	})
 	if err != nil {
@@ -35,7 +35,7 @@ func TestRenderProducesAlignedPlainTextAndTruncatesDescriptions(t *testing.T) {
 	for _, want := range []string{
 		"SKILL",
 		"DESCRIPTION",
-		"~/.maestro/skills/",
+		"STATUS",
 		"maestro-snap",
 		truncated,
 		"other-skill",

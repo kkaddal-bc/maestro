@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"io"
-	"os"
-	"path/filepath"
 
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/listtable"
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/manifest"
@@ -41,46 +39,27 @@ func runList(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	installTargets := detectInstallTargets()
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-
-	return printListSkills(cmd.OutOrStdout(), home, manifestData, installTargets)
+	return printListSkills(cmd.OutOrStdout(), manifestData, detectInstallTargets())
 }
 
-func printListSkills(out io.Writer, home string, manifestData *manifest.Manifest, installTargets []targets.Target) error {
-	headers := []string{"SKILL", "DESCRIPTION"}
-	for _, target := range installTargets {
-		headers = append(headers, displayTargetPath(home, target.Path))
-	}
-
+func printListSkills(out io.Writer, manifestData *manifest.Manifest, installTargets []targets.Target) error {
+	headers := []string{"SKILL", "DESCRIPTION", "STATUS"}
 	return listtable.NewRenderer().Render(out, headers, buildListRows(manifestData, installTargets))
 }
 
 func buildListRows(manifestData *manifest.Manifest, installTargets []targets.Target) []listtable.Row {
 	rows := make([]listtable.Row, 0, len(manifestData.Skills))
 	for _, skill := range manifestData.Skills {
-		statuses := make([]string, 0, len(installTargets))
-		for _, target := range installTargets {
-			statuses = append(statuses, skillStatus(target.Path, skill.Name))
+		status := "not installed"
+		if skillInstalledOnTargets(installTargets, skill.Name) {
+			status = "installed"
 		}
-
 		rows = append(rows, listtable.Row{
 			Name:        skill.Name,
 			Description: skill.Description,
-			Statuses:    statuses,
+			Status:      status,
 		})
 	}
 
 	return rows
-}
-
-func skillStatus(targetPath, skillName string) string {
-	info, err := os.Stat(filepath.Join(targetPath, skillName))
-	if err != nil || !info.IsDir() {
-		return "not installed"
-	}
-	return "installed"
 }

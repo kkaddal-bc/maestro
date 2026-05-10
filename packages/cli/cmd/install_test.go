@@ -93,6 +93,10 @@ func TestInstallCommandInstallsSelectedSkillAndPrintsSummary(t *testing.T) {
 	}
 
 	out := stdout.String()
+	if !strings.Contains(out, "\x1b[") {
+		t.Fatalf("output missing ANSI styling:\n%s", out)
+	}
+	out = stripANSI(out)
 	for _, want := range []string{
 		"✓ installed maestro-snap → ~/.maestro/skills/",
 		"✓ installed maestro-snap → ~/.claude/skills/",
@@ -168,6 +172,10 @@ func TestInstallSkillsCommandInstallsAllSkillsWhenNonInteractive(t *testing.T) {
 
 
 	out := stdout.String()
+	if !strings.Contains(out, "\x1b[") {
+		t.Fatalf("output missing ANSI styling:\n%s", out)
+	}
+	out = stripANSI(out)
 	for _, want := range []string{
 		"✓ installed maestro-snap → ~/.maestro/skills/",
 		"✓ installed other-skill → ~/.maestro/skills/",
@@ -346,4 +354,23 @@ func gzipArchive(t *testing.T) []byte {
 		t.Fatalf("gzip close: %v", err)
 	}
 	return buf.Bytes()
+}
+
+func stripANSI(value string) string {
+	var b strings.Builder
+	inEscape := false
+	for i := 0; i < len(value); i++ {
+		switch {
+		case inEscape:
+			if value[i] == 'm' {
+				inEscape = false
+			}
+		case value[i] == '\x1b' && i+1 < len(value) && value[i+1] == '[':
+			inEscape = true
+			i++
+		default:
+			b.WriteByte(value[i])
+		}
+	}
+	return b.String()
 }

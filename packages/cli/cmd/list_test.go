@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/kkaddal-bc/maestro/packages/cli/internal/manifest"
+	"github.com/kkaddal-bc/maestro/packages/cli/internal/targets"
 )
 
 func TestListCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
@@ -20,9 +21,6 @@ func TestListCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
 	}
 	if err := os.MkdirAll(filepath.Join(home, ".maestro", "skills", "maestro-snap"), 0o755); err != nil {
 		t.Fatalf("mkdir maestro skill: %v", err)
-	}
-	if err := os.MkdirAll(filepath.Join(home, ".claude", "skills", "other-skill"), 0o755); err != nil {
-		t.Fatalf("mkdir claude skill: %v", err)
 	}
 
 	oldFetcher := newSkillsFetcher
@@ -57,8 +55,7 @@ func TestListCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
 	for _, want := range []string{
 		"SKILL",
 		"DESCRIPTION",
-		"~/.maestro/skills/",
-		"~/.claude/skills/",
+		"STATUS",
 		"maestro-snap",
 		"other-skill",
 		"installed",
@@ -74,9 +71,6 @@ func TestListCommandShowsInstalledStatusPerActiveTarget(t *testing.T) {
 	}
 	if strings.Contains(out, "\t") {
 		t.Fatalf("output unexpectedly contains tabs:\n%s", out)
-	}
-	if strings.Contains(out, "~/.agents/skills/") {
-		t.Fatalf("output unexpectedly includes missing target:\n%s", out)
 	}
 }
 
@@ -111,5 +105,32 @@ func TestListCommandSucceedsWhenNothingIsInstalled(t *testing.T) {
 
 	if got := stdout.String(); !strings.Contains(got, "not installed") {
 		t.Fatalf("output missing installation state:\n%s", got)
+	}
+}
+
+func TestBuildListRowsMarksInstalledIfSkillExistsOnAnyTarget(t *testing.T) {
+	home := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(home, ".claude", "skills", "maestro-snap"), 0o755); err != nil {
+		t.Fatalf("mkdir skill: %v", err)
+	}
+
+	rows := buildListRows(&manifest.Manifest{
+		Skills: []manifest.SkillEntry{
+			{Name: "maestro-snap", Description: "Capture"},
+			{Name: "other-skill", Description: "Other"},
+		},
+	}, []targets.Target{
+		{Path: filepath.Join(home, ".missing", "skills"), Required: true},
+		{Path: filepath.Join(home, ".claude", "skills"), Required: false},
+	})
+
+	if len(rows) != 2 {
+		t.Fatalf("rows len = %d, want 2", len(rows))
+	}
+	if rows[0].Status != "installed" {
+		t.Fatalf("maestro-snap status = %q, want installed", rows[0].Status)
+	}
+	if rows[1].Status != "not installed" {
+		t.Fatalf("other-skill status = %q, want not installed", rows[1].Status)
 	}
 }
